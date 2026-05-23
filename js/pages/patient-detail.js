@@ -202,6 +202,10 @@ const PatientDetailPage = (() => {
               </div>`;
           }).join('') || '<p class="text-secondary" style="font-size:var(--font-size-sm)">Nenhuma evolução registrada</p>'}
         </div>
+      </div>
+    `;
+  }
+
   function renderPrescriptions(patient) {
     const prescriptions = patient.prescriptions || [];
     let changed = false;

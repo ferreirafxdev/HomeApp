@@ -217,6 +217,8 @@ const PatientsPage = (() => {
       healthPlan: data.get('healthPlan') || '',
       allergies: data.get('allergies') ? data.get('allergies').split(',').map(a => a.trim()) : [],
       therapeuticPlan: data.get('therapeuticPlan') || '',
+      therapeuticGoals: [],
+      therapeuticInterventions: [],
       comorbidities: [],
       prescriptions: [],
       status: 'active',

@@ -112,6 +112,60 @@ const Store = (() => {
     }
   }
 
+  // Reconcile and merge offline data with cloud data (Last-Write-Wins based on timestamps)
+  function reconcileState(localState, fbState) {
+    if (!localState) return fbState || {};
+    if (!fbState) return localState || {};
+
+    const mergedState = { ...fbState };
+    const collections = [
+      'patients', 'professionals', 'schedules', 'vitalSigns', 
+      'evolutions', 'conversations', 'inventory', 'auditLog', 'alerts'
+    ];
+
+    collections.forEach(col => {
+      const localItems = localState[col] || [];
+      const fbItems = fbState[col] || [];
+      const mergedItems = [...fbItems];
+
+      localItems.forEach(localItem => {
+        if (!localItem.id) return;
+        
+        const fbIndex = fbItems.findIndex(i => i.id === localItem.id);
+        if (fbIndex === -1) {
+          // New offline item, add to collection
+          mergedItems.push(localItem);
+        } else {
+          const fbItem = fbItems[fbIndex];
+          // Determine newest based on timestamp properties
+          const localTime = localItem.updatedAt || localItem.timestamp || localItem.createdAt || '0';
+          const fbTime = fbItem.updatedAt || fbItem.timestamp || fbItem.createdAt || '0';
+          
+          if (new Date(localTime) > new Date(fbTime)) {
+            // Local is newer, overwrite the item in merged list
+            const mergedIndex = mergedItems.findIndex(i => i.id === localItem.id);
+            if (mergedIndex !== -1) {
+              mergedItems[mergedIndex] = localItem;
+            }
+          }
+        }
+      });
+
+      mergedState[col] = mergedItems;
+    });
+
+    // Merge settings and billing
+    mergedState.settings = { ...(fbState.settings || {}), ...(localState.settings || {}) };
+    mergedState.billing = { ...(fbState.billing || {}), ...(localState.billing || {}) };
+
+    // Retain active currentUser session from local state
+    if (localState.currentUser) {
+      mergedState.currentUser = localState.currentUser;
+    }
+
+    return mergedState;
+  }
+
   // ---- Core Initialization ----
 
   // Initialize state from Firebase, then localStorage, then defaults
@@ -122,13 +176,15 @@ const Store = (() => {
     if (fbConnected) {
       // Try loading from Firebase first
       const fbData = await loadFromFirebase();
+      const localData = loadLocal();
+
       if (fbData && Object.keys(fbData).length > 0) {
-        state = fbData;
+        state = reconcileState(localData, fbData);
         saveLocal();
-        console.log('✅ Dados carregados do Firebase');
+        await syncToFirebase(null, state);
+        console.log('✅ Dados carregados do Firebase e reconciliados com LocalStorage');
       } else {
-        // Firebase is empty, seed it with default data
-        const localData = loadLocal();
+        // Firebase is empty, seed it with default data or local data
         state = localData || { ...defaultData };
         await syncToFirebase(null, state);
         saveLocal();
@@ -141,11 +197,11 @@ const Store = (() => {
       const localData = loadLocal();
       if (localData) {
         state = localData;
-        console.log('✅ Dados carregados do localStorage');
+        console.log('✅ Dados carregados do localStorage (Modo Offline)');
       } else {
         state = { ...defaultData };
         saveLocal();
-        console.log('✅ Dados padrão inicializados');
+        console.log('✅ Dados padrão inicializados (Modo Offline)');
       }
     }
 

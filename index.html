@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="description" content="HomeCare — Sistema de Gestão de Atendimento Domiciliar. Organize, monitore e otimize o atendimento domiciliar de pacientes.">
+  <meta name="theme-color" content="#0D1117">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>HomeCare — Gestão Assistencial Domiciliar</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="css/index.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/pages.css">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Firebase SDKs (compat for browser use) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+
+  <!-- Additional Inline Styles for notification dropdown -->
+  <style>
+    .notification-dropdown {
+      position: fixed;
+      top: calc(var(--header-height) + 4px);
+      right: var(--space-md);
+      width: calc(100vw - 2 * var(--space-md));
+      max-width: 380px;
+      max-height: 70vh;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-lg);
+      box-shadow: var(--shadow-xl);
+      z-index: var(--z-dropdown);
+      overflow: hidden;
+      animation: fadeInDown 0.2s ease;
+    }
+    .notification-dropdown.hidden { display: none; }
+    .notification-dropdown-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-md);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .notification-dropdown-header h3 { font-size: var(--font-size-md); }
+    .notification-dropdown-body {
+      overflow-y: auto;
+      max-height: calc(70vh - 60px);
+    }
+    .notification-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-sm);
+      padding: var(--space-md);
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+    .notification-item:hover { background: var(--glass-bg-hover); }
+    .notification-item.unread { background: rgba(10, 132, 255, 0.05); }
+    .notification-item .badge-dot { margin-top: 6px; flex-shrink: 0; }
+    .notification-item-content { flex: 1; min-width: 0; }
+    .notification-item-text { font-size: var(--font-size-sm); margin-bottom: 2px; }
+    .notification-item-patient { font-size: var(--font-size-xs); color: var(--primary); display: block; }
+    .notification-item-time { font-size: var(--font-size-xs); color: var(--text-tertiary); }
+
+    @media (min-width: 768px) {
+      .notification-dropdown {
+        right: var(--space-lg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- App Root -->
+  <div class="app" id="app">
+    <!-- Loading Splash -->
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;gap:16px;">
+      <div style="width:64px;height:64px;background:transparent;border-radius:16px;display:flex;align-items:center;justify-content:center;overflow:hidden;animation:pulse 1.5s infinite;">
+        <img src="favicon.png" alt="HomeApp Logo" style="width:100%;height:100%;object-fit:contain;">
+      </div>
+      <div style="font-size:20px;font-weight:700;color:#F0F6FC;">HomeCare</div>
+      <div style="font-size:13px;color:#8B949E;">Carregando sistema...</div>
+      <div style="width:120px;height:3px;background:#21262D;border-radius:99px;overflow:hidden;margin-top:8px;">
+        <div style="width:60%;height:100%;background:linear-gradient(90deg,#0A84FF,#5E5CE6);border-radius:99px;animation:shimmer 1.5s infinite;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Modules -->
+  <!-- Core -->
+  <script src="js/store.js"></script>
+  <script src="js/data.js"></script>
+
+  <!-- Components -->
+  <script src="js/components/notifications.js"></script>
+  <script src="js/components/modal.js"></script>
+  <script src="js/components/charts.js"></script>
+  <script src="js/components/sidebar.js"></script>
+  <script src="js/components/header.js"></script>
+
+  <!-- Pages -->
+  <script src="js/pages/dashboard.js"></script>
+  <script src="js/pages/patients.js"></script>
+  <script src="js/pages/patient-detail.js"></script>
+  <script src="js/pages/schedule.js"></script>
+  <script src="js/pages/monitoring.js"></script>
+  <script src="js/pages/messages.js"></script>
+  <script src="js/pages/admin.js"></script>
+  <script src="js/pages/audit.js"></script>
+
+  <!-- App Router (must be last) -->
+  <script src="js/app.js"></script>
+</body>
+</html>

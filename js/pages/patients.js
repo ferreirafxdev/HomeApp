@@ -142,6 +142,19 @@ const PatientsPage = (() => {
           </div>
           <div class="form-row">
             <div class="form-group">
+              <label class="form-label">Sexo *</label>
+              <select class="form-input" name="gender" required>
+                <option value="M">Masculino</option>
+                <option value="F">Feminino</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Leito / Quarto</label>
+              <input class="form-input" name="bed" placeholder="Ex: Leito 102-A">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
               <label class="form-label">CPF</label>
               <input class="form-input" name="cpf" placeholder="000.000.000-00">
             </div>
@@ -206,7 +219,8 @@ const PatientsPage = (() => {
     const patient = {
       name: data.get('name'),
       age: parseInt(data.get('age')),
-      gender: 'M',
+      gender: data.get('gender') || 'M',
+      bed: data.get('bed') || '',
       cpf: data.get('cpf') || '',
       phone: data.get('phone') || '',
       address: data.get('address') || '',

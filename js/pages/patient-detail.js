@@ -65,6 +65,9 @@ const PatientDetailPage = (() => {
           <button class="tab" onclick="PatientDetailPage.switchTab('info')" data-tab="info">
             <i data-lucide="user" style="width:16px;height:16px"></i> Dados
           </button>
+          <button class="tab" onclick="PatientDetailPage.switchTab('nutrology')" data-tab="nutrology">
+            <i data-lucide="droplet" style="width:16px;height:16px"></i> Nutrologia & BH
+          </button>
         </div>
 
         <!-- Tab Content -->
@@ -102,6 +105,7 @@ const PatientDetailPage = (() => {
       case 'vitals': return renderVitals(patient);
       case 'evolutions': return renderEvolutions(patient);
       case 'info': return renderInfo(patient);
+      case 'nutrology': return renderNutrology(patient);
       default: return '';
     }
   }
@@ -1255,6 +1259,920 @@ const PatientDetailPage = (() => {
     );
   }
 
+  // --- NUTROLOGIA & MEDICINA DO ESPORTE METHODS ---
+
+  let pepTexts = {};
+
+  function calculateBodyFat(gender, height, waist, neck, hip) {
+    try {
+      if (!height || !waist || !neck) return null;
+      
+      if (gender === 'M' || gender === 'Masculino') {
+        const diff = waist - neck;
+        if (diff <= 0) return null;
+        const val = 1.0324 - 0.19077 * Math.log10(diff) + 0.15456 * Math.log10(height);
+        const bf = (495 / val) - 450;
+        return isNaN(bf) || bf < 0 ? null : bf;
+      } else {
+        if (!hip) return null;
+        const sumDiff = waist + hip - neck;
+        if (sumDiff <= 0) return null;
+        const val = 1.29579 - 0.35004 * Math.log10(sumDiff) + 0.22100 * Math.log10(height);
+        const bf = (495 / val) - 450;
+        return isNaN(bf) || bf < 0 ? null : bf;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function classifyBmi(bmi) {
+    if (bmi < 18.5) return 'Abaixo do peso';
+    if (bmi < 25) return 'Peso normal';
+    if (bmi < 30) return 'Sobrepeso';
+    if (bmi < 35) return 'Obesidade Grau I';
+    if (bmi < 40) return 'Obesidade Grau II';
+    return 'Obesidade Grau III';
+  }
+
+  function classifyBf(gender, bf) {
+    if (bf === null || bf === undefined || isNaN(bf)) return 'Não Calculado';
+    if (gender === 'M' || gender === 'Masculino') {
+      if (bf < 6) return 'Gordura Essencial';
+      if (bf < 14) return 'Atleta';
+      if (bf < 18) return 'Aptidão Física (Fitness)';
+      if (bf < 25) return 'Médio / Aceitável';
+      return 'Risco de Obesidade';
+    } else {
+      if (bf < 14) return 'Gordura Essencial';
+      if (bf < 21) return 'Atleta';
+      if (bf < 25) return 'Aptidão Física (Fitness)';
+      if (bf < 32) return 'Médio / Aceitável';
+      return 'Risco de Obesidade';
+    }
+  }
+
+  function classifyBalance(fluidBalance) {
+    if (fluidBalance < -1000) return 'Balanço Negativo Crítico (Risco de Desidratação)';
+    if (fluidBalance < 0) return 'Balanço Negativo Leve';
+    if (fluidBalance === 0) return 'Neutro';
+    if (fluidBalance <= 1500) return 'Balanço Positivo Leve';
+    return 'Balanço Positivo Crítico (Risco de Retenção Hídrica)';
+  }
+
+  function classifyDu(du) {
+    if (du < 0.3) return 'Anúria / Oligúria Grave';
+    if (du < 0.5) return 'Oligúria';
+    if (du <= 2.0) return 'Normal / Adequado';
+    return 'Poliúria';
+  }
+
+  function bfText(bf) {
+    if (bf === null || bf === undefined || isNaN(bf)) return 'N/I';
+    return `${bf.toFixed(1)}%`;
+  }
+
+  function fluidRow(label, value) {
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:13px;border-bottom:1px solid rgba(255,255,255,0.04)">
+        <span style="color:var(--text-secondary)">${label}</span>
+        <span style="font-weight:500;color:var(--text-primary)">${value}</span>
+      </div>
+    `;
+  }
+
+  function switchPepSubtab(e, type) {
+    document.querySelectorAll('.pep-subtab').forEach(btn => {
+      btn.style.color = 'var(--text-secondary)';
+      btn.style.borderBottomColor = 'transparent';
+      btn.style.fontWeight = 'normal';
+    });
+    
+    const btn = e.currentTarget;
+    btn.style.color = 'var(--primary)';
+    btn.style.borderBottomColor = 'var(--primary)';
+    btn.style.fontWeight = '600';
+    
+    const term = document.getElementById('pepTerminalArea');
+    if (term && pepTexts[type]) {
+      term.textContent = pepTexts[type];
+    }
+  }
+
+  function copyToClipboard(elementId) {
+    const textElement = document.getElementById(elementId);
+    if (!textElement) return;
+    
+    const text = textElement.innerText || textElement.textContent;
+    
+    navigator.clipboard.writeText(text).then(() => {
+      Notifications.show('Copiado', 'Resumo clínico copiado para o prontuário!', 'success');
+    }).catch(err => {
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
+        Notifications.show('Copiado', 'Resumo clínico copiado para o prontuário!', 'success');
+      } catch (e) {
+        Notifications.show('Erro', 'Não foi possível copiar automaticamente.', 'danger');
+      }
+      document.body.removeChild(textArea);
+    });
+  }
+
+  function toggleNutrologyMonitoring() {
+    const patient = Store.getById('patients', patientId);
+    if (!patient) return;
+    const isMonitoring = !patient.nutrologyMonitoring;
+    Store.update('patients', patientId, { nutrologyMonitoring: isMonitoring });
+    
+    Store.addAuditLog(isMonitoring ? 'Acompanhamento nutrológico ativado' : 'Acompanhamento nutrológico desativado', {
+      patient: patient.name
+    });
+    
+    Notifications.show(
+      isMonitoring ? 'Acompanhamento Ativado' : 'Acompanhamento Desativado',
+      isMonitoring ? `Monitoramento especializado ativado para ${patient.name}` : `Monitoramento desativado para ${patient.name}`,
+      isMonitoring ? 'success' : 'warning'
+    );
+    
+    switchTab('nutrology');
+  }
+
+  function renderNutrology(patient) {
+    const monitoringActive = !!patient.nutrologyMonitoring;
+    
+    let html = `
+      <div class="page-enter animate-fade-in">
+        <!-- Monitoring Status Header -->
+        <div class="card-flat" style="margin-bottom:var(--space-lg);background:linear-gradient(135deg, rgba(10, 132, 255, 0.05), rgba(94, 92, 230, 0.05));border-color:rgba(10, 132, 255, 0.15);padding:var(--space-md) var(--space-lg)">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--space-md)">
+            <div style="display:flex;align-items:center;gap:var(--space-md)">
+              <div style="width:48px;height:48px;background:var(--primary-light);color:var(--primary);border-radius:var(--border-radius-lg);display:flex;align-items:center;justify-content:center;box-shadow:0 0 15px rgba(10,132,255,0.15)">
+                <i data-lucide="droplet" style="width:24px;height:24px;color:var(--primary)"></i>
+              </div>
+              <div>
+                <h3 style="margin-bottom:2px;font-size:16px;font-weight:600">Acompanhamento Especializado</h3>
+                <p style="color:var(--text-secondary);font-size:var(--font-size-sm)">Nutrologia, Antropometria Esportiva e Controle Rigoroso de Balanço Hídrico</p>
+              </div>
+            </div>
+            <div>
+              <button class="btn ${monitoringActive ? 'btn-ghost' : 'btn-primary'}" onclick="PatientDetailPage.toggleNutrologyMonitoring()" style="${monitoringActive ? 'color:var(--danger)' : ''}">
+                <i data-lucide="${monitoringActive ? 'power-off' : 'zap'}"></i>
+                <span>${monitoringActive ? 'Desativar Monitoramento' : 'Ativar Monitoramento'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+    `;
+
+    if (!monitoringActive) {
+      html += `
+        <div class="empty-state animate-fade-in" style="padding:var(--space-2xl) var(--space-xl);background:var(--bg-secondary);border:1px dashed var(--border-color);border-radius:var(--border-radius-lg);text-align:center;max-width:800px;margin:0 auto">
+          <i data-lucide="scale" style="width:64px;height:64px;color:var(--text-tertiary);margin-bottom:var(--space-lg);opacity:0.8"></i>
+          <h3 style="font-size:20px;font-weight:700;margin-bottom:var(--space-sm)">Avaliação Clínica & Balanço Hídrico Inteligente</h3>
+          <p style="color:var(--text-secondary);max-width:600px;margin:0 auto var(--space-xl) auto;line-height:1.6">
+            Ative este módulo especializado para automatizar a antropometria clínica, calcular o percentual de gordura (US Navy), superfície corporal (Mosteller), peso ideal (Devine) e monitorar o balanço hídrico rigoroso com alertas automáticos de disfunção renal e risco metabólico.
+          </p>
+          <div style="display:grid;grid-template-columns:1fr;gap:var(--space-md);max-width:550px;margin:0 auto var(--space-xl) auto;text-align:left">
+            <div style="display:flex;align-items:start;gap:var(--space-sm)">
+              <i data-lucide="calculator" style="color:var(--primary);width:16px;height:16px;margin-top:3px;flex-shrink:0"></i>
+              <div>
+                <strong style="color:var(--text-primary);font-size:14px">Antropometria Avançada e Fisiologia</strong>
+                <span style="display:block;font-size:12px;color:var(--text-secondary);margin-top:2px">Cálculo de IMC, Superfície Corporal (SC), Peso Ideal e Gordura Corporal (%GC) via circunferências.</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:start;gap:var(--space-sm)">
+              <i data-lucide="activity" style="color:var(--secondary);width:16px;height:16px;margin-top:3px;flex-shrink:0"></i>
+              <div>
+                <strong style="color:var(--text-primary);font-size:14px">Balanço Rigoroso e Débito Urinário</strong>
+                <span style="display:block;font-size:12px;color:var(--text-secondary);margin-top:2px">Lançamento de múltiplas entradas/saídas com determinação em tempo real do DU em mL/kg/h.</span>
+              </div>
+            </div>
+            <div style="display:flex;align-items:start;gap:var(--space-sm)">
+              <i data-lucide="file-spreadsheet" style="color:var(--warning);width:16px;height:16px;margin-top:3px;flex-shrink:0"></i>
+              <div>
+                <strong style="color:var(--text-primary);font-size:14px">Resumos Clínicos Padronizados (Tasy/MV/PEP)</strong>
+                <span style="display:block;font-size:12px;color:var(--text-secondary);margin-top:2px">Geração automática de evoluções de enfermagem, evoluções médicas, condutas e prescrição de fluidos.</span>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary" onclick="PatientDetailPage.toggleNutrologyMonitoring()">
+            <i data-lucide="zap"></i> Ativar Acompanhamento
+          </button>
+        </div>
+      </div>
+      `;
+      return html;
+    }
+
+    const evaluations = patient.nutrologyEvaluations || [];
+    if (evaluations.length === 0) {
+      html += `
+        <div class="empty-state animate-fade-in" style="padding:var(--space-2xl) var(--space-xl);background:var(--bg-secondary);border:1px dashed var(--border-color);border-radius:var(--border-radius-lg);text-align:center">
+          <i data-lucide="clipboard-list" style="width:48px;height:48px;color:var(--text-tertiary);margin-bottom:var(--space-md)"></i>
+          <h3>Acompanhamento Ativo!</h3>
+          <p style="color:var(--text-secondary);margin-bottom:var(--space-lg)">Ainda não há nenhuma avaliação clínica ou controle hídrico lançado para este paciente.</p>
+          <button class="btn btn-primary" onclick="PatientDetailPage.showAddNutrologyEvaluation()">
+            <i data-lucide="plus"></i> Registrar Primeira Avaliação
+          </button>
+        </div>
+      </div>
+      `;
+      return html;
+    }
+
+    // Get latest evaluation
+    const latest = evaluations[evaluations.length - 1];
+    const weight = parseFloat(latest.weight);
+    const height = parseFloat(latest.height);
+    const waist = parseFloat(latest.waist);
+    const neck = parseFloat(latest.neck);
+    const hip = parseFloat(latest.hip || 0);
+    const age = parseInt(latest.age || patient.age || 0);
+    const gender = latest.gender || patient.gender || 'M';
+    const bed = latest.bed || patient.bed || '-';
+
+    const bmi = latest.bmi;
+    const idealWeight = latest.idealWeight;
+    const sc = latest.bodySurface;
+    const bf = latest.bodyFat;
+    const waterReq = latest.waterRequirement;
+    const du = latest.urineOutput;
+    const fluidBalance = latest.fluidBalance;
+    const hours = latest.hours;
+
+    // Calculate intakes & outputs
+    const totalIntake = (latest.intakeVo || 0) + (latest.intakeEv || 0) + (latest.intakeEnteral || 0) + (latest.intakeMedications || 0) + (latest.intakeBlood || 0) + (latest.intakeOthers || 0);
+    const totalOutput = (latest.outputDiuresis || 0) + (latest.outputVomiting || 0) + (latest.outputDrains || 0) + (latest.outputStool || 0) + (latest.outputAspiration || 0) + (latest.outputHemorrhage || 0) + (latest.outputOthers || 0);
+
+    // Dynamic alert generation
+    const activeAlerts = [];
+    if (gender === 'M' && waist > 102) {
+      activeAlerts.push({
+        type: 'critical',
+        title: '⚠️ Risco Metabólico Cardiovascular',
+        desc: `Circunferência abdominal de ${waist} cm está acima do limiar clínico para homens (102 cm), apontando alto acúmulo visceral.`
+      });
+    } else if (gender === 'F' && waist > 88) {
+      activeAlerts.push({
+        type: 'critical',
+        title: '⚠️ Risco Metabólico Cardiovascular',
+        desc: `Circunferência abdominal de ${waist} cm está acima do limiar clínico para mulheres (88 cm), apontando alto acúmulo visceral.`
+      });
+    }
+
+    if (du < 0.5) {
+      const type = du < 0.3 ? 'critical' : 'warning';
+      activeAlerts.push({
+        type: type,
+        title: du < 0.3 ? '🚨 Insuficiência Renal Aguda / Anúria' : '⚠️ Oligúria Clínico / Alerta Renal',
+        desc: `Débito urinário muito baixo: ${du.toFixed(2)} mL/kg/h (esperado: > 0.5 mL/kg/h). Possível hipovolemia ou falência renal.`
+      });
+    }
+
+    if (fluidBalance < -1000) {
+      activeAlerts.push({
+        type: 'warning',
+        title: '💧 Risco de Desidratação Crítica',
+        desc: `Balanço hídrico acumulado em ${fluidBalance} mL. Necessário reposição de perdas ou aumento da taxa de infusão EV.`
+      });
+    } else if (fluidBalance > 1500) {
+      activeAlerts.push({
+        type: 'warning',
+        title: '🌊 Risco de Retenção Hídrica / Congestão',
+        desc: `Balanço hídrico acumulado positivo em ${fluidBalance} mL. Cuidado com risco de edema ou sobrecarga volêmica.`
+      });
+    }
+
+    // Build PEP textual data
+    const timestampStr = formatDateTime(latest.timestamp);
+    const bmiClass = classifyBmi(bmi);
+    const bfClass = classifyBf(gender, bf);
+    const balanceClass = classifyBalance(fluidBalance);
+    const duClass = classifyDu(du);
+    const metabolicRiskStr = (gender === 'M' ? waist > 102 : waist > 88) ? 'ELEVADO / RISCO VISCERAL' : 'BAIXO';
+
+    const proteinPerKg = 1.2;
+    const proteinNeed = (weight * proteinPerKg).toFixed(1);
+    const calorieNeed = Math.round(weight * 25);
+    const velInfusion = (waterReq / 24).toFixed(1);
+    const dropsMin = Math.round(waterReq / (24 * 3));
+
+    // PEP: Tabela Organizada
+    const tablePep = `============================================================
+AVALIAÇÃO ANTROPOMÉTRICA & CONTROLE HÍDRICO HOSPITALAR
+============================================================
+Paciente: ${patient.name}
+Idade: ${age} anos | Sexo: ${gender === 'M' ? 'Masculino' : 'Feminino'} | Leito: ${bed}
+Diagnóstico: ${patient.diagnosis}
+CID: ${patient.diagnosisCode || '-'} | Data/Hora: ${timestampStr}
+------------------------------------------------------------
+1. PARÂMETROS FISIOLÓGICOS E ANTROPOMÉTRICOS:
+- Peso Atual: ${weight.toFixed(1)} kg | Peso Ideal: ${idealWeight.toFixed(1)} kg
+- Altura: ${height.toFixed(0)} cm | Superfície Corporal: ${sc.toFixed(2)} m²
+- IMC calculado: ${bmi.toFixed(2)} kg/m² (${bmiClass})
+- Circunferência Abdominal: ${waist.toFixed(1)} cm
+- Circunferência Cervical: ${neck.toFixed(1)} cm
+- Circunferência Quadril: ${gender === 'F' ? `${hip.toFixed(1)} cm` : '-'}
+- Percentual de Gordura Corporal: ${bfText(bf)} (${bfClass})
+- Risco Metabólico / Visceral: ${metabolicRiskStr}
+------------------------------------------------------------
+2. MONITORAMENTO DOS SINAIS VITAIS:
+- Pressão Arterial: ${latest.systolic || '-'}/${latest.diastolic || '-'} mmHg
+- Frequência Cardíaca: ${latest.heartRate || '-'} bpm
+- Temperatura Corporal: ${latest.temperature ? `${latest.temperature} °C` : '-'}
+- Saturação O2 (SpO2): ${latest.spo2 || '-'}%
+- Glicemia Capilar: ${latest.glucose ? `${latest.glucose} mg/dL` : '-'}
+------------------------------------------------------------
+3. BALANÇO DE FLUIDOS DETALHADO (${hours} HORAS):
+Entradas Consolidadas:
+  - Via Oral (VO): ${latest.intakeVo} mL
+  - Via Endovenosa (EV): ${latest.intakeEv} mL
+  - Dieta enteral/parenteral: ${latest.intakeEnteral} mL
+  - Medicações infundidas: ${latest.intakeMedications} mL
+  - Hemoderivados: ${latest.intakeBlood} mL
+  - Outros fluidos: ${latest.intakeOthers} mL
+  TOTAL ENTRADAS: ${totalIntake} mL
+Saídas Consolidadas:
+  - Diurese (Urina): ${latest.outputDiuresis} mL
+  - Vômitos: ${latest.outputVomiting} mL
+  - Drenos cirúrgicos: ${latest.outputDrains} mL
+  - Fezes líquidas/conteúdo: ${latest.outputStool} mL
+  - Aspiração gástrica/traqueal: ${latest.outputAspiration} mL
+  - Perdas hemorrágicas: ${latest.outputHemorrhage} mL
+  - Outras perdas: ${latest.outputOthers} mL
+  TOTAL SAÍDAS: ${totalOutput} mL
+
+BALANÇO HÍDRICO ACUMULADO: ${fluidBalance > 0 ? `+${fluidBalance}` : fluidBalance} mL (${balanceClass})
+DÉBITO URINÁRIO MÉDIO: ${du.toFixed(2)} mL/kg/h (${duClass})
+------------------------------------------------------------
+4. ALERTAS ASSISTENCIAIS ATIVOS:
+${activeAlerts.length > 0 ? activeAlerts.map(a => `- [ALERTA] ${a.title}: ${a.desc}`).join('\n') : '- Sem alertas assistenciais no momento.'}
+============================================================`;
+
+    // PEP: Evolução Médica
+    const evolutionMedical = `Evolução Médica (Nutrologia e Medicina do Esporte) - ${timestampStr}:
+Paciente sob acompanhamento metabólico e nutrológico no leito ${bed}. Diagnóstico de base: ${patient.diagnosis}.
+Do ponto de vista antropométrico, apresenta IMC de ${bmi.toFixed(2)} kg/m² (${bmiClass}), peso ideal estimado em ${idealWeight.toFixed(1)} kg, superfície corporal de ${sc.toFixed(2)} m² e percentual de gordura corporal aferido em ${bfText(bf)} (${bfClass}). Circunferência abdominal de ${waist.toFixed(1)} cm denota risco metabólico/cardiovascular classificado como ${metabolicRiskStr}.
+Aferido controle de balanço hídrico de ${hours} horas, evidenciando aporte hídrico de ${totalIntake} mL e perdas totais de ${totalOutput} mL, consolidando balanço de ${fluidBalance > 0 ? `+${fluidBalance}` : fluidBalance} mL (${balanceClass}). O débito urinário médio no período manteve-se em ${du.toFixed(2)} mL/kg/h (${duClass}). 
+Paciente hemodinamicamente estável (PA: ${latest.systolic || '-'}/${latest.diastolic || '-'} mmHg, FC: ${latest.heartRate || '-'} bpm), eupneico (SpO2: ${latest.spo2 || '-'}%), afebril (Temp: ${latest.temperature ? `${latest.temperature} °C` : '-'}) e glicemia capilar de ${latest.glucose ? `${latest.glucose} mg/dL` : '-'}.
+Conduta médica esportiva e nutrológica traçadas, priorizando equilíbrio hidroeletrolítico e preservação de massa magra.`;
+
+    // PEP: Evolução Enfermagem
+    const evolutionNursing = `Evolução de Enfermagem (Balanço de Fluidos e Monitoramento) - ${timestampStr}:
+Realizado acompanhamento de enfermagem e controle hídrico rigoroso no leito ${bed} nas últimas ${hours} horas.
+Registrado volume total de entradas de ${totalIntake} mL, sendo composto por via oral (${latest.intakeVo} mL), infusão endovenosa (${latest.intakeEv} mL), dieta enteral/parenteral (${latest.intakeEnteral} mL) e medicações. Nas saídas, contabilizado perda total de ${totalOutput} mL, consistindo em diurese de ${latest.outputDiuresis} mL, drenos, fezes líquidas e demais perdas mensuráveis. 
+Balanço hídrico final encerra em ${fluidBalance > 0 ? `+${fluidBalance}` : fluidBalance} mL (${balanceClass}). Débito urinário médio mantido em ${du.toFixed(2)} mL/kg/h. 
+Sinais vitais checados e registrados. Acesso venoso pérvio, sem sinais flogísticos ou infiltração de fluidos. Dieta enteral/via oral bem tolerada, sem episódios relatados de refluxo ou vômitos no período. Paciente segue sob vigilância clínica e cuidados gerais de enfermagem contínuos.`;
+
+    // PEP: Conduta Sugerida
+    const suggestedConduct = `Conduta Nutrológica e Medicina do Esporte Recomendada - ${timestampStr}:
+1. Meta calórica estimada em ${calorieNeed} kcal/dia (regra de bolso de 25 kcal/kg/dia).
+2. Ajustar aporte proteico para ${proteinNeed} g/dia (estimado em ${proteinPerKg} g/kg/dia) com o objetivo de preservação da massa livre de gordura e otimização metabólica assistida.
+3. Monitorar eletrólitos séricos (Sódio, Potássio e Magnésio) a cada 24/48 horas devido ao quadro atual de ${balanceClass}.
+4. Conforme tolerância gastrointestinal, evoluir terapia nutricional ou fracionamento dietético.
+5. Em conjunto com a equipe de reabilitação e se as condições hemodinâmicas permitirem, prescrever protocolo de exercícios ativos para ganho ou preservação de massa muscular.`;
+
+    // PEP: Prescrição Hídrica
+    const hydrationPrescription = `Prescrição Hídrica e Fluido Recomendações - ${timestampStr}:
+1. Necessidade Hídrica Basal Estimada: ${waterReq} mL em 24 horas (baseado em 35 mL/kg/dia).
+2. Plano de Infusão de Fluidos de Manutenção Recomendado:
+   - Volume Total nas 24h: ${waterReq} mL.
+   - Taxa de Infusão Contínua: ${velInfusion} mL/hora (ou aproximadamente ${dropsMin} gotas por minuto).
+3. Sugestão de Composição das Soluções de Manutenção:
+   - Soro Fisiológico (SF 0,9%): ${(waterReq * 0.5).toFixed(0)} mL EV nas 24h (para manutenção hidroeletrolítica).
+   - Soro Glicosado (SG 5%): ${(waterReq * 0.5).toFixed(0)} mL EV nas 24h (para aporte basal de carboidratos).
+4. Em caso de alertas renais (débito urinário < 0.5 mL/kg/h), considerar restrição volêmica associada ou intervenção diurética conforme indicação.`;
+
+    // Save texts in closure
+    pepTexts = {
+      all: `${tablePep}\n\n${evolutionMedical}\n\n${evolutionNursing}\n\n${suggestedConduct}\n\n${hydrationPrescription}`,
+      med: evolutionMedical,
+      enf: evolutionNursing,
+      cond: suggestedConduct,
+      pres: hydrationPrescription
+    };
+
+    // Card Colors & Classes
+    const bmiColor = bmi < 18.5 ? 'warning' : bmi < 25 ? 'success' : bmi < 30 ? 'warning' : 'danger';
+    const bfColor = (bf !== null && bf >= 25 && gender === 'M') || (bf !== null && bf >= 32 && gender === 'F') ? 'danger' : 'success';
+    const balanceColor = Math.abs(fluidBalance) > 1500 ? 'critical' : Math.abs(fluidBalance) > 1000 ? 'warning' : '';
+    const duColor = du < 0.3 ? 'critical' : du < 0.5 ? 'warning' : '';
+
+    html += `
+        <!-- Evaluation Dashboard Grid -->
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md);flex-wrap:wrap;gap:var(--space-md)">
+          <div>
+            <h3 style="font-size:16px;font-weight:700">Última Avaliação Clínica</h3>
+            <span style="font-size:11px;color:var(--text-tertiary)">Realizada em ${timestampStr} | Leito: ${bed}</span>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="PatientDetailPage.showAddNutrologyEvaluation()">
+            <i data-lucide="plus"></i> Nova Avaliação
+          </button>
+        </div>
+
+        <div class="grid-3 animate-fade-in-up">
+          <!-- IMC Card -->
+          <div class="vital-card ${bmiColor === 'danger' ? 'critical' : bmiColor === 'warning' ? 'warning' : ''}">
+            <div class="vital-icon" style="color:var(--primary)"><i data-lucide="calculator"></i></div>
+            <div class="vital-value">${bmi.toFixed(2)}</div>
+            <div class="vital-label">Índice de Massa Corporal (IMC)</div>
+            <span class="badge badge-${bmiColor}" style="margin-top:6px;display:inline-block">${bmiClass}</span>
+          </div>
+
+          <!-- Peso Ideal Card -->
+          <div class="vital-card">
+            <div class="vital-icon" style="color:var(--secondary)"><i data-lucide="scale"></i></div>
+            <div class="vital-value">${idealWeight.toFixed(1)} <span style="font-size:12px;color:var(--text-secondary)">kg</span></div>
+            <div class="vital-label">Peso Ideal (Fórmula Devine)</div>
+            <span class="badge badge-neutral" style="margin-top:6px;display:inline-block">Atual: ${weight.toFixed(1)} kg</span>
+          </div>
+
+          <!-- Superfície Corporal Card -->
+          <div class="vital-card">
+            <div class="vital-icon" style="color:var(--info)"><i data-lucide="maximize"></i></div>
+            <div class="vital-value">${sc.toFixed(2)} <span style="font-size:12px;color:var(--text-secondary)">m²</span></div>
+            <div class="vital-label">Superfície Corporal (Mosteller)</div>
+            <span class="badge badge-neutral" style="margin-top:6px;display:inline-block">Parâmetro de dose</span>
+          </div>
+
+          <!-- Percentual Gordura Card -->
+          <div class="vital-card ${bfColor === 'danger' ? 'warning' : ''}">
+            <div class="vital-icon" style="color:var(--accent)"><i data-lucide="dumbbell"></i></div>
+            <div class="vital-value">${bfText(bf)}</div>
+            <div class="vital-label">% de Gordura (M. Marinha)</div>
+            <span class="badge badge-${bfColor === 'danger' ? 'warning' : 'success'}" style="margin-top:6px;display:inline-block">${bfClass}</span>
+          </div>
+
+          <!-- Necessidade Hídrica Card -->
+          <div class="vital-card">
+            <div class="vital-icon" style="color:var(--primary)"><i data-lucide="droplet"></i></div>
+            <div class="vital-value">${waterReq} <span style="font-size:12px;color:var(--text-secondary)">mL</span></div>
+            <div class="vital-label">Necessidade Hídrica / Dia</div>
+            <span class="badge badge-info" style="margin-top:6px;display:inline-block">35 mL/kg</span>
+          </div>
+
+          <!-- Balanço Hídrico & DU Card -->
+          <div class="vital-card ${balanceColor || duColor ? 'critical' : ''}">
+            <div class="vital-icon" style="color:var(--warning)"><i data-lucide="activity"></i></div>
+            <div class="vital-value" style="font-size:16px;line-height:1.2;margin-top:4px">
+              BH: ${fluidBalance > 0 ? `+${fluidBalance}` : fluidBalance} mL<br>
+              <span style="font-size:12px;color:var(--text-secondary)">DU: ${du.toFixed(2)} mL/kg/h</span>
+            </div>
+            <div class="vital-label" style="margin-top:4px">Balanço & Débito Urinário</div>
+            <span class="badge badge-${du < 0.5 ? 'danger' : 'success'}" style="margin-top:4px;display:inline-block">${duClass}</span>
+          </div>
+        </div>
+
+        <!-- Alertas Section -->
+        ${activeAlerts.length > 0 ? `
+          <div class="section mt-lg animate-fade-in-up">
+            <h3 class="section-title" style="color:var(--danger)">⚠️ Alertas Clínicos Críticos</h3>
+            <div style="display:flex;flex-direction:column;gap:var(--space-sm);margin-top:var(--space-sm)">
+              ${activeAlerts.map(alert => `
+                <div class="alert-card ${alert.type === 'critical' ? 'critical' : 'warning'}" style="display:flex;gap:var(--space-md);padding:var(--space-md);border-radius:var(--border-radius);border:1px solid;background:${alert.type === 'critical' ? 'var(--danger-light)' : 'var(--warning-light)'};border-color:${alert.type === 'critical' ? 'rgba(255, 69, 58, 0.3)' : 'rgba(255, 159, 10, 0.3)'}">
+                  <span class="alert-pulse" style="width:12px;height:12px;border-radius:50%;background:${alert.type === 'critical' ? 'var(--danger)' : 'var(--warning)'};margin-top:4px;animation:pulse 1.5s infinite"></span>
+                  <div style="flex:1">
+                    <h4 style="font-weight:600;font-size:14px;margin-bottom:3px;color:var(--text-primary)">${alert.title}</h4>
+                    <p style="font-size:12px;color:var(--text-secondary);line-height:1.4">${alert.desc}</p>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Balanço Detalhado Column Dashboard -->
+        <div class="grid-2 mt-lg animate-fade-in-up">
+          <!-- Entradas -->
+          <div class="card-flat" style="border-left: 4px solid var(--secondary)">
+            <h4 style="font-size:14px;font-weight:600;margin-bottom:var(--space-md);color:var(--secondary);display:flex;align-items:center;gap:6px">
+              <i data-lucide="plus-circle" style="width:16px;height:16px"></i> Entradas Hidroeletrolíticas (${hours}h)
+            </h4>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              ${fluidRow('Via Oral (VO / Água)', `${latest.intakeVo || 0} mL`)}
+              ${fluidRow('Endovenosa (EV)', `${latest.intakeEv || 0} mL`)}
+              ${fluidRow('Dieta enteral/parenteral', `${latest.intakeEnteral || 0} mL`)}
+              ${fluidRow('Medicações infundidas', `${latest.intakeMedications || 0} mL`)}
+              ${fluidRow('Hemoderivados', `${latest.intakeBlood || 0} mL`)}
+              ${fluidRow('Outros aportes', `${latest.intakeOthers || 0} mL`)}
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-sm) 0;border-top:1px solid var(--border-color);margin-top:8px;font-weight:600;color:var(--text-primary)">
+                <span>Total Entradas (Fluidos)</span>
+                <span style="color:var(--secondary)">${totalIntake} mL</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Saídas -->
+          <div class="card-flat" style="border-left: 4px solid var(--danger)">
+            <h4 style="font-size:14px;font-weight:600;margin-bottom:var(--space-md);color:var(--danger);display:flex;align-items:center;gap:6px">
+              <i data-lucide="minus-circle" style="width:16px;height:16px"></i> Perdas e Saídas Hídricas (${hours}h)
+            </h4>
+            <div style="display:flex;flex-direction:column;gap:4px">
+              ${fluidRow('Diurese (Volume Urinário)', `${latest.outputDiuresis || 0} mL`)}
+              ${fluidRow('Vômitos / Êmeses', `${latest.outputVomiting || 0} mL`)}
+              ${fluidRow('Drenos / Secreções', `${latest.outputDrains || 0} mL`)}
+              ${fluidRow('Fezes líquidas / Diarreia', `${latest.outputStool || 0} mL`)}
+              ${fluidRow('Aspiração gástrica/vias', `${latest.outputAspiration || 0} mL`)}
+              ${fluidRow('Hemorragias', `${latest.outputHemorrhage || 0} mL`)}
+              ${fluidRow('Outras saídas / Perdas', `${latest.outputOthers || 0} mL`)}
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:var(--space-sm) 0;border-top:1px solid var(--border-color);margin-top:8px;font-weight:600;color:var(--text-primary)">
+                <span>Total Saídas (Perdas)</span>
+                <span style="color:var(--danger)">${totalOutput} mL</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tasy/MV/PEP Terminal Box -->
+        <div class="card-flat mt-lg animate-fade-in-up" style="padding:0;overflow:hidden;border:1px solid var(--border-color)">
+          <div style="background:var(--bg-tertiary);border-bottom:1px solid var(--border-color);padding:var(--space-md) var(--space-lg);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--space-md)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <i data-lucide="file-spreadsheet" style="color:var(--primary);width:18px;height:18px"></i>
+              <h4 style="font-size:14px;font-weight:600;color:var(--text-primary)">Integração Prontuário Hospitalar (Tasy / MV / PEP)</h4>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="PatientDetailPage.copyToClipboard('pepTerminalArea')">
+              <i data-lucide="copy" style="width:14px;height:14px;margin-right:6px"></i> Copiar Texto Ativo
+            </button>
+          </div>
+          
+          <div style="display:flex;background:var(--bg-secondary);border-bottom:1px solid var(--border-color);overflow-x:auto;scrollbar-width:none">
+            <button class="pep-subtab" onclick="PatientDetailPage.switchPepSubtab(event, 'all')" style="padding:12px 16px;background:transparent;border:none;color:var(--primary);font-weight:600;font-size:12px;cursor:pointer;border-bottom:2px solid var(--primary)">Tudo Consolidado</button>
+            <button class="pep-subtab" onclick="PatientDetailPage.switchPepSubtab(event, 'med')" style="padding:12px 16px;background:transparent;border:none;color:var(--text-secondary);font-size:12px;cursor:pointer;border-bottom:2px solid transparent">Evolução Médica</button>
+            <button class="pep-subtab" onclick="PatientDetailPage.switchPepSubtab(event, 'enf')" style="padding:12px 16px;background:transparent;border:none;color:var(--text-secondary);font-size:12px;cursor:pointer;border-bottom:2px solid transparent">Evolução Enfermagem</button>
+            <button class="pep-subtab" onclick="PatientDetailPage.switchPepSubtab(event, 'cond')" style="padding:12px 16px;background:transparent;border:none;color:var(--text-secondary);font-size:12px;cursor:pointer;border-bottom:2px solid transparent">Conduta Nutrológica</button>
+            <button class="pep-subtab" onclick="PatientDetailPage.switchPepSubtab(event, 'pres')" style="padding:12px 16px;background:transparent;border:none;color:var(--text-secondary);font-size:12px;cursor:pointer;border-bottom:2px solid transparent">Prescrição Hídrica</button>
+          </div>
+          
+          <pre id="pepTerminalArea" style="background:#090d13;color:#e6edf3;font-family:var(--font-mono);font-size:12px;padding:var(--space-lg);max-height:400px;overflow-y:auto;line-height:1.5;white-space:pre-wrap;word-break:break-all;margin:0">${tablePep}</pre>
+        </div>
+
+        <!-- Evaluation History Timeline -->
+        <div class="section mt-xl animate-fade-in-up">
+          <h3 class="section-title">Histórico de Avaliações Clínicas</h3>
+          <div class="card-flat mt-sm" style="padding:0;overflow:hidden">
+            <div style="overflow-x:auto">
+              <table style="width:100%;border-collapse:collapse;font-size:13px;text-align:left">
+                <thead>
+                  <tr style="background:var(--bg-tertiary);border-bottom:1px solid var(--border-color);color:var(--text-secondary)">
+                    <th style="padding:12px var(--space-md)">Data/Hora</th>
+                    <th style="padding:12px var(--space-md)">Peso</th>
+                    <th style="padding:12px var(--space-md)">IMC (Calculado)</th>
+                    <th style="padding:12px var(--space-md)">Gordura %</th>
+                    <th style="padding:12px var(--space-md)">Balanço Hídrico</th>
+                    <th style="padding:12px var(--space-md)">Débito Urinário</th>
+                    <th style="padding:12px var(--space-md);text-align:right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${evaluations.slice().reverse().map(ev => `
+                    <tr style="border-bottom:1px solid var(--border-color)">
+                      <td style="padding:12px var(--space-md);font-weight:500;white-space:nowrap">${formatDateTime(ev.timestamp)}</td>
+                      <td style="padding:12px var(--space-md)">${parseFloat(ev.weight).toFixed(1)} kg</td>
+                      <td style="padding:12px var(--space-md)">${parseFloat(ev.bmi).toFixed(2)} <span style="font-size:10px;color:var(--text-tertiary)">(${classifyBmi(ev.bmi)})</span></td>
+                      <td style="padding:12px var(--space-md)">${bfText(ev.bodyFat)}</td>
+                      <td style="padding:12px var(--space-md);color:${ev.fluidBalance < -1000 ? 'var(--danger)' : ev.fluidBalance > 1500 ? 'var(--warning)' : 'var(--text-primary)'}">
+                        ${ev.fluidBalance > 0 ? `+${ev.fluidBalance}` : ev.fluidBalance} mL
+                      </td>
+                      <td style="padding:12px var(--space-md);color:${ev.urineOutput < 0.5 ? 'var(--danger)' : 'var(--text-primary)'}">
+                        ${parseFloat(ev.urineOutput).toFixed(2)} mL/kg/h <span style="font-size:10px;color:var(--text-tertiary)">(${classifyDu(ev.urineOutput)})</span>
+                      </td>
+                      <td style="padding:12px var(--space-md);text-align:right">
+                        <button class="btn btn-ghost btn-sm text-danger" onclick="PatientDetailPage.deleteNutrologyEvaluation('${ev.id}')" style="min-height:28px;min-width:28px;padding:2px;color:var(--danger)" title="Excluir Registro">
+                          <i data-lucide="trash-2" style="width:14px;height:14px;color:var(--danger)"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+    return html;
+  }
+
+  function showAddNutrologyEvaluation() {
+    const patient = Store.getById('patients', patientId);
+    if (!patient) return;
+
+    const evals = patient.nutrologyEvaluations || [];
+    const latest = evals[evals.length - 1] || {};
+
+    Modal.show({
+      title: 'Registrar Avaliação Especializada & Balanço',
+      size: 'large',
+      content: `
+        <form id="addNutrologyForm" onsubmit="PatientDetailPage.handleAddNutrologyEvaluation(event)">
+          <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:12px;border-bottom:1px solid var(--border-color);padding-bottom:6px">
+            1. DADOS DE INTERNAÇÃO E CADASTRO
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Leito / Quarto</label>
+              <input class="form-input" name="bed" value="${patient.bed || latest.bed || ''}" placeholder="Ex: Leito 102-A">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Idade *</label>
+              <input class="form-input" name="age" type="number" required value="${patient.age || latest.age || ''}" placeholder="Anos">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Sexo *</label>
+              <select class="form-input" name="gender" required>
+                <option value="M" ${patient.gender === 'M' ? 'selected' : ''}>Masculino</option>
+                <option value="F" ${patient.gender === 'F' ? 'selected' : ''}>Feminino</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:12px;border-bottom:1px solid var(--border-color);padding-bottom:6px;margin-top:12px">
+            2. ANTROPOMETRIA CLÍNICA E CIRCUFERÊNCIAS (cm)
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Peso Corporal Atual (kg) *</label>
+              <input class="form-input" name="weight" type="number" step="0.1" required value="${latest.weight || ''}" placeholder="Ex: 75.5">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Altura do Paciente (cm) *</label>
+              <input class="form-input" name="height" type="number" required value="${latest.height || ''}" placeholder="Ex: 175">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Circunferência Abdominal *</label>
+              <input class="form-input" name="waist" type="number" step="0.1" required value="${latest.waist || ''}" placeholder="Ex: 92.0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Circunferência Cervical *</label>
+              <input class="form-input" name="neck" type="number" step="0.1" required value="${latest.neck || ''}" placeholder="Ex: 38.0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Circunferência Quadril (Obrigatória se Feminino)</label>
+              <input class="form-input" name="hip" type="number" step="0.1" value="${latest.hip || ''}" placeholder="Ex: 102.0">
+            </div>
+          </div>
+
+          <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:12px;border-bottom:1px solid var(--border-color);padding-bottom:6px;margin-top:12px">
+            3. SINAIS VITAIS & GLICEMIA CAPILAR (Opcional)
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">PA Sistólica (mmHg)</label>
+              <input class="form-input" name="systolic" type="number" value="${latest.systolic || ''}" placeholder="120">
+            </div>
+            <div class="form-group">
+              <label class="form-label">PA Diastólica (mmHg)</label>
+              <input class="form-input" name="diastolic" type="number" value="${latest.diastolic || ''}" placeholder="80">
+            </div>
+            <div class="form-group">
+              <label class="form-label">FC (bpm)</label>
+              <input class="form-input" name="heartRate" type="number" value="${latest.heartRate || ''}" placeholder="75">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Temperatura (°C)</label>
+              <input class="form-input" name="temperature" type="number" step="0.1" value="${latest.temperature || ''}" placeholder="36.5">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Saturação SpO2 (%)</label>
+              <input class="form-input" name="spo2" type="number" value="${latest.spo2 || ''}" placeholder="98">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Glicemia (mg/dL)</label>
+              <input class="form-input" name="glucose" type="number" value="${latest.glucose || ''}" placeholder="99">
+            </div>
+          </div>
+
+          <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:12px;border-bottom:1px solid var(--border-color);padding-bottom:6px;margin-top:12px">
+            4. ENTRADAS HÍDRICAS (mL)
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Via Oral (VO / Água)</label>
+              <input class="form-input" name="intakeVo" type="number" value="${latest.intakeVo || '0'}" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Aporte Endovenoso (EV)</label>
+              <input class="form-input" name="intakeEv" type="number" value="${latest.intakeEv || '0'}" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Dieta Enteral/Parenteral</label>
+              <input class="form-input" name="intakeEnteral" type="number" value="${latest.intakeEnteral || '0'}" placeholder="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Medicações Diluídas</label>
+              <input class="form-input" name="intakeMedications" type="number" value="${latest.intakeMedications || '0'}" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hemoderivados</label>
+              <input class="form-input" name="intakeBlood" type="number" value="${latest.intakeBlood || '0'}" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Outras Entradas</label>
+              <input class="form-input" name="intakeOthers" type="number" value="${latest.intakeOthers || '0'}" placeholder="0">
+            </div>
+          </div>
+
+          <div style="font-size:13px;font-weight:600;color:var(--primary);margin-bottom:12px;border-bottom:1px solid var(--border-color);padding-bottom:6px;margin-top:12px">
+            5. SAÍDAS E PERDAS HÍDRICAS (mL)
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Diurese (Volume Urinário)</label>
+              <input class="form-input" name="outputDiuresis" type="number" value="${latest.outputDiuresis || '0'}" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Vômitos / Êmeses</label>
+              <input class="form-input" name="outputVomiting" type="number" value="${latest.outputVomiting || '0'}" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Drenos (Cirúrgicos/Vias)</label>
+              <input class="form-input" name="outputDrains" type="number" value="${latest.outputDrains || '0'}" placeholder="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Fezes Líquidas / Diarreia</label>
+              <input class="form-input" name="outputStool" type="number" value="${latest.outputStool || '0'}" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Aspiração Gástrica</label>
+              <input class="form-input" name="outputAspiration" type="number" value="${latest.outputAspiration || '0'}" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Hemorragias</label>
+              <input class="form-input" name="outputHemorrhage" type="number" value="${latest.outputHemorrhage || '0'}" placeholder="0">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Outras Perdas</label>
+              <input class="form-input" name="outputOthers" type="number" value="${latest.outputOthers || '0'}" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Período de Acúmulo (Horas) *</label>
+              <input class="form-input" name="hours" type="number" required value="${latest.hours || '24'}" placeholder="24" min="1" max="48">
+            </div>
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-full mt-md">
+            <i data-lucide="calculator"></i> Calcular Fisiologia & Salvar
+          </button>
+        </form>
+      `
+    });
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+  }
+
+  function handleAddNutrologyEvaluation(e) {
+    e.preventDefault();
+    const data = new FormData(e.target);
+    const patient = Store.getById('patients', patientId);
+    if (!patient) return;
+
+    const weight = parseFloat(data.get('weight'));
+    const height = parseFloat(data.get('height'));
+    const waist = parseFloat(data.get('waist'));
+    const neck = parseFloat(data.get('neck'));
+    const hip = data.get('hip') ? parseFloat(data.get('hip')) : null;
+    const gender = data.get('gender');
+    const age = parseInt(data.get('age'));
+    const bed = data.get('bed') || '';
+
+    // Calculations
+    const bmi = weight / ((height / 100) ** 2);
+    
+    // Ideal weight
+    const heightInInches = height / 2.54;
+    const baseIdeal = (gender === 'F') ? 45.5 : 50.0;
+    let idealWeight = baseIdeal + 2.3 * (heightInInches - 60);
+    if (idealWeight < 0 || isNaN(idealWeight)) idealWeight = baseIdeal;
+
+    // Body surface area Mosteller
+    const bodySurface = Math.sqrt((height * weight) / 3600);
+
+    // Body fat US Navy
+    const bodyFat = calculateBodyFat(gender, height, waist, neck, hip);
+
+    // Intakes
+    const intakeVo = parseFloat(data.get('intakeVo') || 0);
+    const intakeEv = parseFloat(data.get('intakeEv') || 0);
+    const intakeEnteral = parseFloat(data.get('intakeEnteral') || 0);
+    const intakeMedications = parseFloat(data.get('intakeMedications') || 0);
+    const intakeBlood = parseFloat(data.get('intakeBlood') || 0);
+    const intakeOthers = parseFloat(data.get('intakeOthers') || 0);
+    const totalIntake = intakeVo + intakeEv + intakeEnteral + intakeMedications + intakeBlood + intakeOthers;
+
+    // Outputs
+    const outputDiuresis = parseFloat(data.get('outputDiuresis') || 0);
+    const outputVomiting = parseFloat(data.get('outputVomiting') || 0);
+    const outputDrains = parseFloat(data.get('outputDrains') || 0);
+    const outputStool = parseFloat(data.get('outputStool') || 0);
+    const outputAspiration = parseFloat(data.get('outputAspiration') || 0);
+    const outputHemorrhage = parseFloat(data.get('outputHemorrhage') || 0);
+    const outputOthers = parseFloat(data.get('outputOthers') || 0);
+    const totalOutput = outputDiuresis + outputVomiting + outputDrains + outputStool + outputAspiration + outputHemorrhage + outputOthers;
+
+    const fluidBalance = totalIntake - totalOutput;
+
+    const hours = parseFloat(data.get('hours') || 24);
+    const urineOutput = outputDiuresis / (weight * hours);
+
+    const evaluation = {
+      id: Store.generateId(),
+      timestamp: new Date().toISOString(),
+      age,
+      gender,
+      bed,
+      weight,
+      height,
+      waist,
+      neck,
+      hip,
+      
+      // Sinais vitais
+      systolic: data.get('systolic') ? parseInt(data.get('systolic')) : null,
+      diastolic: data.get('diastolic') ? parseInt(data.get('diastolic')) : null,
+      heartRate: data.get('heartRate') ? parseInt(data.get('heartRate')) : null,
+      temperature: data.get('temperature') ? parseFloat(data.get('temperature')) : null,
+      spo2: data.get('spo2') ? parseInt(data.get('spo2')) : null,
+      glucose: data.get('glucose') ? parseInt(data.get('glucose')) : null,
+
+      // Entradas
+      intakeVo,
+      intakeEv,
+      intakeEnteral,
+      intakeMedications,
+      intakeBlood,
+      intakeOthers,
+
+      // Saídas
+      outputDiuresis,
+      outputVomiting,
+      outputDrains,
+      outputStool,
+      outputAspiration,
+      outputHemorrhage,
+      outputOthers,
+
+      hours,
+      
+      // Calculations
+      bmi,
+      idealWeight,
+      bodySurface,
+      bodyFat,
+      waterRequirement: weight * 35,
+      urineOutput,
+      fluidBalance
+    };
+
+    const evals = patient.nutrologyEvaluations || [];
+    evals.push(evaluation);
+
+    Store.update('patients', patientId, { 
+      nutrologyEvaluations: evals,
+      gender,
+      age,
+      bed
+    });
+
+    Store.addAuditLog('Avaliação clínica realizada', {
+      patient: patient.name,
+      details: `Peso: ${weight}kg, IMC: ${bmi.toFixed(1)}, BH: ${fluidBalance}mL`
+    });
+
+    Modal.close();
+    switchTab('nutrology');
+    Notifications.show('Avaliação Salva', 'Cálculos fisiológicos e balanço hídrico concluídos!', 'success');
+  }
+
+  function deleteNutrologyEvaluation(evalId) {
+    const patient = Store.getById('patients', patientId);
+    if (!patient) return;
+    if (!confirm('Deseja realmente excluir esta avaliação nutrológica?')) return;
+    
+    const evals = patient.nutrologyEvaluations || [];
+    const updatedEvals = evals.filter(e => e.id !== evalId);
+    
+    Store.update('patients', patientId, { nutrologyEvaluations: updatedEvals });
+    Store.addAuditLog('Avaliação nutrológica excluída', {
+      patient: patient.name
+    });
+    
+    Notifications.show('Avaliação Excluída', 'Registro removido com sucesso.', 'warning');
+    switchTab('nutrology');
+  }
+
   function afterRender() {
     Header.updateTitle('Paciente', Store.getById('patients', patientId)?.name || '');
     const patient = Store.getById('patients', patientId);
@@ -1270,6 +2188,14 @@ const PatientDetailPage = (() => {
     // Plano Terapêutico methods
     showEditPlanDescription, handleEditPlanDescription,
     showAddGoal, handleAddGoal, showEditGoal, handleEditGoal, deleteGoal, cycleGoalStatus,
-    showAddIntervention, handleAddIntervention, showEditIntervention, handleEditIntervention, deleteIntervention, toggleInterventionStatus
+    showAddIntervention, handleAddIntervention, showEditIntervention, handleEditIntervention, deleteIntervention, toggleInterventionStatus,
+    // Nutrologia & BH methods
+    renderNutrology,
+    toggleNutrologyMonitoring,
+    showAddNutrologyEvaluation,
+    handleAddNutrologyEvaluation,
+    deleteNutrologyEvaluation,
+    copyToClipboard,
+    switchPepSubtab
   };
 })();

@@ -227,5 +227,58 @@ const PdfExport = (() => {
     return y;
   }
 
-  return { generate };
+  function exportMealPlanPDF(patientId, planId) {
+    const patient = Store.getById('patients', patientId);
+    const plan = Store.getAll('nutritionalPlans').find(p => p.id === planId);
+    
+    if (!patient || !plan) {
+      console.warn('Patient or Plan not found for PDF export');
+      return;
+    }
+
+    const sections = [
+      {
+        type: 'info',
+        title: 'Dados do Paciente',
+        pairs: [
+          { label: 'Nome', value: patient.name },
+          { label: 'Idade/Sexo', value: `${patient.age || '-'} anos / ${patient.gender || '-'}` },
+          { label: 'Objetivo', value: plan.objective || 'Saúde e Manutenção' }
+        ]
+      },
+      {
+        type: 'info',
+        title: 'Resumo Nutricional Diário',
+        pairs: [
+          { label: 'Calorias', value: `${plan.calories} kcal` },
+          { label: 'Proteínas', value: `${plan.protein || '-'} g` },
+          { label: 'Ingestão Hídrica', value: `${plan.water || 2000} ml` }
+        ]
+      }
+    ];
+
+    if (plan.meals && plan.meals.length > 0) {
+      const rows = plan.meals.map(m => [
+        m.time || '-',
+        m.name || '-',
+        m.items ? m.items.join(', ') : '-'
+      ]);
+
+      sections.push({
+        type: 'table',
+        title: 'Plano Alimentar',
+        headers: ['Horário', 'Refeição', 'Alimentos / Opções'],
+        rows: rows
+      });
+    }
+
+    generate({
+      title: 'Plano Alimentar Individualizado',
+      subtitle: plan.title,
+      filename: `plano_alimentar_${patient.name.replace(/\s+/g, '_').toLowerCase()}`,
+      sections: sections
+    });
+  }
+
+  return { generate, exportMealPlanPDF };
 })();

@@ -8,12 +8,25 @@ const MockData = {
   currentUser: null,
 
   // ============================================
-  // PATIENTS (Empty)
+  // PATIENTS
   // ============================================
-  patients: [],
+  patients: [
+    {
+      id: 'pat001',
+      name: 'João Paciente',
+      status: 'active',
+      username: 'joao',
+      password: '123',
+      role: 'Paciente',
+      avatarColor: 2,
+      birthDate: '1990-05-10',
+      gender: 'M',
+      nutritionistId: 'usr002' // Assigned nutritionist
+    }
+  ],
 
   // ============================================
-  // PROFESSIONALS (Only default admin)
+  // PROFESSIONALS
   // ============================================
   professionals: [
     { 
@@ -27,8 +40,27 @@ const MockData = {
       password: 'ADMIN@123',
       status: 'available', 
       avatarColor: 1 
+    },
+    { 
+      id: 'usr002', 
+      name: 'Ana Nutri', 
+      role: 'Nutricionista', 
+      specialty: 'Nutrição Esportiva e Clínica', 
+      coren: 'CRN-3 12345', 
+      phone: '(11) 98888-7777', 
+      username: 'ana',
+      password: '123',
+      status: 'available', 
+      avatarColor: 3 
     }
   ],
+
+  // ============================================
+  // NUTRITIONAL DATA
+  // ============================================
+  nutritionalPlans: [],
+  foodDiaries: [],
+  nutritionalAssessments: [],
 
   // ============================================
   // SCHEDULES / APPOINTMENTS (Empty)
@@ -46,22 +78,22 @@ const MockData = {
   evolutions: [],
 
   // ============================================
-  // MESSAGES & CHATS (Initial Welcome Conversation)
+  // MESSAGES & CHATS
   // ============================================
   conversations: [
     {
       id: 'conv_central',
       name: 'Central de Mensagens',
       type: 'admin',
-      participants: ['usr001'],
-      lastMessage: 'Bem-vindo ao sistema de Home Care!',
+      participants: ['usr001', 'usr002', 'pat001'],
+      lastMessage: 'Bem-vindo ao sistema!',
       lastMessageTime: new Date().toISOString(),
       unread: 0,
       messages: [
         { 
           id: 'msg_welcome', 
           senderId: 'usr001', 
-          text: 'Bem-vindo ao sistema de Home Care! Este é o canal de comunicação corporativa do sistema. Adicione profissionais para criar novas conversas.', 
+          text: 'Bem-vindo ao sistema! Este é o canal principal.', 
           timestamp: new Date().toISOString() 
         }
       ]

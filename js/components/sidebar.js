@@ -4,20 +4,40 @@
 // ============================================
 
 const Sidebar = (() => {
-  const navItems = [
-    { id: 'dashboard', icon: 'layout-dashboard', label: 'Dashboard', section: 'principal' },
-    { id: 'patients', icon: 'users', label: 'Pacientes', section: 'principal' },
-    { id: 'schedule', icon: 'calendar-days', label: 'Atendimentos', section: 'principal' },
-    { id: 'monitoring', icon: 'activity', label: 'Monitoramento', section: 'clínico' },
-    { id: 'messages', icon: 'message-circle', label: 'Mensagens', section: 'clínico', badge: 0 },
-    { id: 'admin', icon: 'briefcase', label: 'Administrativo', section: 'gestão' },
-    { id: 'audit', icon: 'shield-check', label: 'Auditoria', section: 'gestão' }
-  ];
-
-  // Bottom nav shows only 5 items
-  const bottomNavItems = ['dashboard', 'patients', 'schedule', 'monitoring', 'messages'];
+  function getNavItems(user) {
+    const role = user?.role || '';
+    if (role === 'Paciente') {
+      return [
+        { id: 'dashboard', icon: 'layout-dashboard', label: 'Minha Área', section: 'principal' },
+        { id: 'food-diary', icon: 'apple', label: 'Diário Alimentar', section: 'principal' },
+        { id: 'messages', icon: 'message-circle', label: 'Mensagens', section: 'comunicação', badge: 0 }
+      ];
+    } else if (role === 'Nutricionista') {
+      return [
+        { id: 'dashboard', icon: 'layout-dashboard', label: 'Dashboard', section: 'principal' },
+        { id: 'patients', icon: 'users', label: 'Pacientes', section: 'principal' },
+        { id: 'schedule', icon: 'calendar-days', label: 'Atendimentos', section: 'principal' },
+        { id: 'messages', icon: 'message-circle', label: 'Mensagens', section: 'comunicação', badge: 0 }
+      ];
+    } else {
+      // Default (Enfermeiro, Médico, Administrador)
+      return [
+        { id: 'dashboard', icon: 'layout-dashboard', label: 'Dashboard', section: 'principal' },
+        { id: 'patients', icon: 'users', label: 'Pacientes', section: 'principal' },
+        { id: 'schedule', icon: 'calendar-days', label: 'Atendimentos', section: 'principal' },
+        { id: 'monitoring', icon: 'activity', label: 'Monitoramento', section: 'clínico' },
+        { id: 'messages', icon: 'message-circle', label: 'Mensagens', section: 'clínico', badge: 0 },
+        { id: 'admin', icon: 'briefcase', label: 'Administrativo', section: 'gestão' },
+        { id: 'audit', icon: 'shield-check', label: 'Auditoria', section: 'gestão' }
+      ];
+    }
+  }
 
   function render() {
+    const user = Store.get('currentUser') || {};
+    const items = getNavItems(user);
+    const bottomNavItems = items.map(i => i.id).slice(0, 5);
+
     return `
       <!-- Desktop Sidebar -->
       <aside class="sidebar" id="sidebar">
@@ -31,7 +51,7 @@ const Sidebar = (() => {
           </div>
         </div>
         <nav class="sidebar-nav">
-          ${renderNavSections()}
+          ${renderNavSections(user, items)}
         </nav>
         <div class="sidebar-footer">
           <div class="nav-item" onclick="Sidebar.handleLogout()" id="nav-logout">
@@ -47,7 +67,7 @@ const Sidebar = (() => {
       <!-- Mobile Bottom Navigation -->
       <nav class="bottom-nav" id="bottomNav">
         ${bottomNavItems.map(id => {
-          const item = navItems.find(n => n.id === id);
+          const item = items.find(n => n.id === id);
           return `
             <div class="bottom-nav-item${id === 'dashboard' ? ' active' : ''}" 
                  onclick="Sidebar.navigate('${item.id}')"
@@ -64,12 +84,11 @@ const Sidebar = (() => {
     `;
   }
 
-  function renderNavSections() {
-    const user = Store.get('currentUser') || {};
+  function renderNavSections(user, items) {
     const isAdmin = user.role === 'Administrador';
 
     const sections = {};
-    navItems.forEach(item => {
+    items.forEach(item => {
       // Ocultar itens administrativos se o usuário não for administrador
       if ((item.id === 'admin' || item.id === 'audit') && !isAdmin) {
         return;
@@ -82,10 +101,11 @@ const Sidebar = (() => {
     const sectionLabels = {
       'principal': 'Principal',
       'clínico': 'Clínico',
+      'comunicação': 'Comunicação',
       'gestão': 'Gestão'
     };
 
-    // Filtrar seções vazias (caso um usuário comum não veja nada de Gestão)
+    // Filtrar seções vazias
     return Object.entries(sections)
       .filter(([_, items]) => items.length > 0)
       .map(([key, items]) => `

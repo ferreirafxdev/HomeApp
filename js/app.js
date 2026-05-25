@@ -8,6 +8,9 @@ const App = (() => {
 
   const pages = {
     'dashboard': { module: () => DashboardPage, title: 'Dashboard', breadcrumb: '' },
+    'nutri-dashboard': { module: () => NutriDashboardPage, title: 'Dashboard Nutricional', breadcrumb: '' },
+    'patient-dashboard': { module: () => PatientDashboardPage, title: 'Minha Área', breadcrumb: '' },
+    'food-diary': { module: () => FoodDiaryPage, title: 'Diário Alimentar', breadcrumb: 'Diário' },
     'patients': { module: () => PatientsPage, title: 'Pacientes', breadcrumb: 'Pacientes' },
     'patient-detail': { module: () => PatientDetailPage, title: 'Paciente', breadcrumb: 'Detalhe' },
     'schedule': { module: () => SchedulePage, title: 'Atendimentos', breadcrumb: 'Atendimentos' },
@@ -111,9 +114,11 @@ const App = (() => {
     const password = data.get('password').trim();
 
     const professionals = Store.getAll('professionals') || [];
+    const patients = Store.getAll('patients') || [];
     
     // Buscar por correspondência exata de username e password
-    const matchedUser = professionals.find(p => p.username === username && p.password === password);
+    const matchedUser = professionals.find(p => p.username === username && p.password === password) ||
+                        patients.find(p => p.username === username && p.password === password);
 
     if (matchedUser) {
       Store.set('currentUser', {
@@ -199,6 +204,15 @@ const App = (() => {
       Notifications.show('Acesso Restrito', 'Apenas administradores podem acessar esta seção!', 'danger');
       navigate('dashboard');
       return;
+    }
+
+    // Dashboard routing by role
+    if (pageId === 'dashboard') {
+      if (user.role === 'Nutricionista') {
+        pageId = 'nutri-dashboard';
+      } else if (user.role === 'Paciente') {
+        pageId = 'patient-dashboard';
+      }
     }
 
     const page = pages[pageId];

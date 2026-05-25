@@ -65,8 +65,8 @@ const PatientDetailPage = (() => {
           <button class="tab" onclick="PatientDetailPage.switchTab('info')" data-tab="info">
             <i data-lucide="user" style="width:16px;height:16px"></i> Dados
           </button>
-          <button class="tab" onclick="PatientDetailPage.switchTab('nutrology')" data-tab="nutrology">
-            <i data-lucide="droplet" style="width:16px;height:16px"></i> Nutrologia & BH
+          <button class="tab" onclick="PatientDetailPage.switchTab('nutrition')" data-tab="nutrition">
+            <i data-lucide="apple" style="width:16px;height:16px"></i> Nutrição
           </button>
         </div>
 
@@ -105,7 +105,7 @@ const PatientDetailPage = (() => {
       case 'vitals': return renderVitals(patient);
       case 'evolutions': return renderEvolutions(patient);
       case 'info': return renderInfo(patient);
-      case 'nutrology': return renderNutrology(patient);
+      case 'nutrition': return PatientNutrition.render(patient);
       default: return '';
     }
   }

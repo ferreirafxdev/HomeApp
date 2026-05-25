@@ -261,7 +261,10 @@ const PatientDetailPage = (() => {
               <div class="timeline-item">
                 <div class="timeline-dot ${e.type === 'medical' ? 'success' : ''}"></div>
                 <div class="timeline-time">${formatDateTime(e.timestamp)}</div>
-                <div class="timeline-title">${prof?.name || 'Profissional'} — ${prof?.role || ''}</div>
+                <div class="timeline-title">
+                  ${prof?.name || 'Profissional'}
+                  <span class="badge badge-neutral" style="font-size:var(--font-size-sm);margin-left:var(--space-sm);vertical-align:middle">${prof?.role || 'Profissional'}</span>
+                </div>
                 <div class="timeline-desc">${e.text}</div>
               </div>`;
           }).join('') || '<p class="text-secondary" style="font-size:var(--font-size-sm)">Nenhuma evolução registrada</p>'}
@@ -486,7 +489,7 @@ const PatientDetailPage = (() => {
                 </div>
                 <div class="timeline-title">
                   ${prof?.name || 'Profissional'}
-                  <span class="badge badge-neutral" style="font-size:var(--font-size-sm);margin-left:var(--space-sm);vertical-align:middle">${typeLabels[e.type] || prof?.role || ''}</span>
+                  <span class="badge badge-neutral" style="font-size:var(--font-size-sm);margin-left:var(--space-sm);vertical-align:middle">${prof?.role || 'Profissional'}</span>
                 </div>
                 <div class="timeline-desc">${e.text}</div>
               </div>`;

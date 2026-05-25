@@ -64,39 +64,38 @@ const App = (() => {
     if (!app) return;
 
     app.innerHTML = `
-      <div class="login-wrapper animate-fade-in" style="display:flex;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;background:radial-gradient(circle at top right, rgba(10,132,255,0.15), transparent), radial-gradient(circle at bottom left, rgba(94,92,230,0.15), transparent), #0D1117;padding:24px;">
-        <div class="login-card animate-fade-in-up" style="width:100%;max-width:400px;background:rgba(22,27,34,0.7);border:1px solid var(--border-color);border-radius:24px;padding:32px;box-shadow:var(--shadow-xl);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);">
+      <div class="login-wrapper animate-fade-in" style="display:flex;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;background:linear-gradient(135deg, #E8F4FD 0%, #F0F8FF 40%, #FFFFFF 100%);padding:24px;">
+        <div class="login-card animate-fade-in-up" style="width:100%;max-width:400px;background:rgba(255,255,255,0.85);border:1px solid rgba(93,173,226,0.2);border-radius:24px;padding:32px;box-shadow:0 16px 48px rgba(93,173,226,0.15);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);">
           <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:32px;text-align:center;">
-            <div style="width:64px;height:64px;background:var(--primary-light);color:var(--primary);border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 0 20px rgba(10,132,255,0.25);animation:pulse 2s infinite;">
+            <div style="width:64px;height:64px;background:rgba(93,173,226,0.12);border-radius:16px;display:flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 0 20px rgba(93,173,226,0.2);animation:pulse 2s infinite;">
               <img src="favicon.png" alt="Logo" style="width:40px;height:40px;object-fit:contain;">
             </div>
-            <h2 style="font-size:24px;font-weight:700;color:var(--text-primary);margin-bottom:6px;">HomeCare</h2>
-            <p style="font-size:13px;color:var(--text-secondary);">Sistema de Gestão Assistencial Domiciliar</p>
+            <h2 style="font-size:24px;font-weight:700;color:#1B2A4A;margin-bottom:6px;">HomeCare</h2>
+            <p style="font-size:13px;color:#5A7184;">Sistema de Gestão Assistencial Domiciliar</p>
           </div>
           
           <form onsubmit="App.handleLogin(event)" style="display:flex;flex-direction:column;gap:20px;">
             <div class="form-group" style="display:flex;flex-direction:column;gap:6px;">
-              <label style="font-size:12px;font-weight:500;color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
+              <label style="font-size:12px;font-weight:500;color:#5A7184;display:flex;align-items:center;gap:6px;">
                 <i data-lucide="user" style="width:14px;height:14px;"></i> Nome de Usuário
               </label>
-              <input type="text" name="username" required placeholder="Ex: admin ou joao.vitor" style="width:100%;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:12px;padding:12px 16px;color:var(--text-primary);font-size:14px;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-color)'" autocomplete="username">
+              <input type="text" name="username" required placeholder="Digite seu usuário" style="width:100%;background:#E8F4FD;border:1px solid rgba(93,173,226,0.2);border-radius:12px;padding:12px 16px;color:#1B2A4A;font-size:14px;transition:border-color 0.2s;" onfocus="this.style.borderColor='#5DADE2';this.style.boxShadow='0 0 0 3px rgba(93,173,226,0.15)'" onblur="this.style.borderColor='rgba(93,173,226,0.2)';this.style.boxShadow='none'" autocomplete="username">
             </div>
             
             <div class="form-group" style="display:flex;flex-direction:column;gap:6px;">
-              <label style="font-size:12px;font-weight:500;color:var(--text-secondary);display:flex;align-items:center;gap:6px;">
+              <label style="font-size:12px;font-weight:500;color:#5A7184;display:flex;align-items:center;gap:6px;">
                 <i data-lucide="lock" style="width:14px;height:14px;"></i> Senha
               </label>
-              <input type="password" name="password" required placeholder="Data de nascimento ou senha admin" style="width:100%;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:12px;padding:12px 16px;color:var(--text-primary);font-size:14px;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border-color)'" autocomplete="current-password">
+              <input type="password" name="password" required placeholder="Digite sua senha" style="width:100%;background:#E8F4FD;border:1px solid rgba(93,173,226,0.2);border-radius:12px;padding:12px 16px;color:#1B2A4A;font-size:14px;transition:border-color 0.2s;" onfocus="this.style.borderColor='#5DADE2';this.style.boxShadow='0 0 0 3px rgba(93,173,226,0.15)'" onblur="this.style.borderColor='rgba(93,173,226,0.2)';this.style.boxShadow='none'" autocomplete="current-password">
             </div>
             
-            <button type="submit" class="btn btn-primary btn-full" style="margin-top:12px;padding:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;background:linear-gradient(135deg, var(--primary), var(--accent));border:none;box-shadow:0 4px 15px rgba(10,132,255,0.3);transition:transform 0.2s, opacity 0.2s;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform='scale(1)'">
+            <button type="submit" class="btn btn-primary btn-full" style="margin-top:12px;padding:14px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;background:linear-gradient(135deg, #5DADE2, #85C1E9);border:none;color:#FFFFFF;box-shadow:0 4px 15px rgba(93,173,226,0.3);transition:transform 0.2s, opacity 0.2s;" onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform='scale(1)'">
               <i data-lucide="log-in" style="width:16px;height:16px;"></i> Entrar no Sistema
             </button>
           </form>
           
-          <div style="margin-top:24px;text-align:center;font-size:11px;color:var(--text-tertiary);display:flex;flex-direction:column;gap:6px;">
+          <div style="margin-top:24px;text-align:center;font-size:11px;color:#8FA3B8;">
             <span>Primeiro acesso? Solicite suas credenciais ao administrador.</span>
-            <span style="color:var(--primary);cursor:pointer;display:inline-block;font-weight:500;" onclick="Notifications.show('Ajuda', 'Administrador padrão: admin / ADMIN@123. Profissionais cadastrados usam o username gerado (ex: joao.vitor) e a senha sendo a data de nascimento (dd/mm/aaaa).', 'info')">Ver credenciais de demonstração</span>
           </div>
         </div>
       </div>

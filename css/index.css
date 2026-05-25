@@ -10,60 +10,60 @@
    CSS VARIABLES (Design Tokens)
    ============================================ */
 :root {
-  /* --- Primary Colors --- */
-  --primary: #0A84FF;
-  --primary-hover: #3399FF;
-  --primary-dark: #0066CC;
-  --primary-light: rgba(10, 132, 255, 0.15);
-  --primary-glow: rgba(10, 132, 255, 0.4);
+  /* --- Primary Colors (Baby Blue) --- */
+  --primary: #5DADE2;
+  --primary-hover: #3498DB;
+  --primary-dark: #2E86C1;
+  --primary-light: rgba(93, 173, 226, 0.15);
+  --primary-glow: rgba(93, 173, 226, 0.35);
 
   /* --- Semantic Colors --- */
-  --secondary: #30D158;
-  --secondary-hover: #4AE070;
-  --secondary-light: rgba(48, 209, 88, 0.15);
-  --accent: #5E5CE6;
-  --accent-light: rgba(94, 92, 230, 0.15);
-  --warning: #FF9F0A;
-  --warning-light: rgba(255, 159, 10, 0.15);
-  --danger: #FF453A;
-  --danger-light: rgba(255, 69, 58, 0.15);
-  --info: #64D2FF;
-  --info-light: rgba(100, 210, 255, 0.15);
+  --secondary: #2ECC71;
+  --secondary-hover: #27AE60;
+  --secondary-light: rgba(46, 204, 113, 0.12);
+  --accent: #85C1E9;
+  --accent-light: rgba(133, 193, 233, 0.15);
+  --warning: #F39C12;
+  --warning-light: rgba(243, 156, 18, 0.12);
+  --danger: #E74C3C;
+  --danger-light: rgba(231, 76, 60, 0.12);
+  --info: #5DADE2;
+  --info-light: rgba(93, 173, 226, 0.12);
 
-  /* --- Background Colors --- */
-  --bg-primary: #0D1117;
-  --bg-secondary: #161B22;
-  --bg-tertiary: #21262D;
-  --bg-elevated: #282E36;
-  --bg-hover: #30363D;
+  /* --- Background Colors (White & Light Blue) --- */
+  --bg-primary: #F0F8FF;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #E8F4FD;
+  --bg-elevated: #FFFFFF;
+  --bg-hover: #DAEEF9;
 
   /* --- Text Colors --- */
-  --text-primary: #F0F6FC;
-  --text-secondary: #8B949E;
-  --text-tertiary: #6E7681;
-  --text-inverse: #0D1117;
+  --text-primary: #1B2A4A;
+  --text-secondary: #5A7184;
+  --text-tertiary: #8FA3B8;
+  --text-inverse: #FFFFFF;
 
-  /* --- Glass Effects --- */
-  --glass-bg: rgba(255, 255, 255, 0.04);
-  --glass-bg-hover: rgba(255, 255, 255, 0.08);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  /* --- Glass Effects (Light mode) --- */
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-bg-hover: rgba(93, 173, 226, 0.08);
+  --glass-border: rgba(93, 173, 226, 0.12);
+  --glass-shadow: 0 8px 32px rgba(93, 173, 226, 0.1);
   --glass-blur: blur(20px);
 
   /* --- Borders --- */
-  --border-color: rgba(255, 255, 255, 0.1);
-  --border-color-strong: rgba(255, 255, 255, 0.15);
+  --border-color: rgba(93, 173, 226, 0.2);
+  --border-color-strong: rgba(93, 173, 226, 0.3);
   --border-radius-sm: 8px;
   --border-radius: 12px;
   --border-radius-lg: 16px;
   --border-radius-xl: 20px;
   --border-radius-full: 9999px;
 
-  /* --- Shadows --- */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.3);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.4);
-  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.5);
+  /* --- Shadows (Light theme) --- */
+  --shadow-sm: 0 2px 8px rgba(93, 173, 226, 0.08);
+  --shadow-md: 0 4px 16px rgba(93, 173, 226, 0.1);
+  --shadow-lg: 0 8px 32px rgba(93, 173, 226, 0.12);
+  --shadow-xl: 0 16px 48px rgba(93, 173, 226, 0.15);
   --shadow-glow: 0 0 20px var(--primary-glow);
 
   /* --- Spacing --- */

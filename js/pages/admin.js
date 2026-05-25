@@ -300,17 +300,17 @@ const AdminPage = (() => {
 
       <div class="card mt-lg">
         <div class="card-header">
-          <h3 class="card-title">Exportar Relatórios</h3>
+          <h3 class="card-title">Exportar Relatórios (PDF)</h3>
         </div>
         <div style="display:flex;flex-wrap:wrap;gap:var(--space-sm)">
           <button class="btn btn-secondary" onclick="AdminPage.exportReport('attendance')">
-            <i data-lucide="file-text"></i> Relatório de Atendimentos
+            <i data-lucide="file-text"></i> PDF — Atendimentos
           </button>
           <button class="btn btn-secondary" onclick="AdminPage.exportReport('financial')">
-            <i data-lucide="receipt"></i> Relatório Financeiro
+            <i data-lucide="receipt"></i> PDF — Financeiro
           </button>
           <button class="btn btn-secondary" onclick="AdminPage.exportReport('patients')">
-            <i data-lucide="users"></i> Relatório de Pacientes
+            <i data-lucide="users"></i> PDF — Pacientes
           </button>
         </div>
       </div>
@@ -437,8 +437,110 @@ const AdminPage = (() => {
   }
 
   function exportReport(type) {
-    Notifications.show('Exportação', `Relatório de ${type === 'attendance' ? 'atendimentos' : type === 'financial' ? 'financeiro' : 'pacientes'} será gerado em breve`, 'info');
-    Store.addAuditLog('Relatório exportado', { details: `Tipo: ${type}` });
+    const today = new Date().toISOString().split('T')[0];
+
+    if (type === 'attendance') {
+      const schedules = Store.getAll('schedules');
+      if (!schedules.length) {
+        Notifications.show('Exportação', 'Nenhum atendimento registrado para exportar', 'warning');
+        return;
+      }
+      const statusLabels = { 'completed': 'Concluído', 'in-progress': 'Em Andamento', 'scheduled': 'Agendado', 'cancelled': 'Cancelado' };
+      const typeLabels = { 'nursing': 'Enfermagem', 'medical': 'Médico', 'physio': 'Fisioterapia', 'nutrition': 'Nutrição', 'psychology': 'Psicologia' };
+      const rows = schedules.map(s => {
+        const patient = Store.getById('patients', s.patientId);
+        const prof = Store.getById('professionals', s.professionalId);
+        return [
+          s.date || '-',
+          s.time || '-',
+          patient?.name || '-',
+          prof?.name || '-',
+          typeLabels[s.type] || s.type || '-',
+          s.title || '-',
+          statusLabels[s.status] || s.status || '-'
+        ];
+      });
+
+      PdfExport.generate({
+        title: 'Relatório de Atendimentos',
+        subtitle: `${schedules.length} atendimentos registrados — Gerado em ${new Date().toLocaleString('pt-BR')}`,
+        filename: `relatorio_atendimentos_${today}`,
+        sections: [{
+          type: 'table',
+          title: 'Lista de Atendimentos',
+          headers: ['Data', 'Hora', 'Paciente', 'Profissional', 'Tipo', 'Título', 'Status'],
+          rows: rows
+        }]
+      });
+
+    } else if (type === 'financial') {
+      const billing = Store.get('billing') || {};
+      const profit = (billing.monthlyRevenue || 0) - (billing.monthlyCosts || 0);
+      const breakdown = billing.costBreakdown || [];
+
+      const sections = [
+        {
+          type: 'info',
+          title: 'Resumo Financeiro',
+          pairs: [
+            { label: 'Receita Mensal', value: `R$ ${formatCurrency(billing.monthlyRevenue)}` },
+            { label: 'Custos Mensais', value: `R$ ${formatCurrency(billing.monthlyCosts)}` },
+            { label: 'Resultado', value: `R$ ${formatCurrency(profit)}` },
+            { label: 'Faturas Pendentes', value: String(billing.pendingInvoices || 0) },
+            { label: 'Faturas Concluídas', value: String(billing.completedInvoices || 0) }
+          ]
+        }
+      ];
+
+      if (breakdown.length > 0) {
+        sections.push({
+          type: 'table',
+          title: 'Composição de Custos',
+          headers: ['Categoria', 'Valor (R$)'],
+          rows: breakdown.map(item => [item.category, `R$ ${formatCurrency(item.amount)}`])
+        });
+      }
+
+      PdfExport.generate({
+        title: 'Relatório Financeiro',
+        subtitle: `Gerado em ${new Date().toLocaleString('pt-BR')}`,
+        filename: `relatorio_financeiro_${today}`,
+        sections: sections
+      });
+
+    } else if (type === 'patients') {
+      const patients = Store.getAll('patients');
+      if (!patients.length) {
+        Notifications.show('Exportação', 'Nenhum paciente cadastrado para exportar', 'warning');
+        return;
+      }
+      const statusLabels = { 'active': 'Ativo', 'palliative': 'Paliativo', 'discharged': 'Alta' };
+      const rows = patients.map(p => [
+        p.name || '-',
+        String(p.age || '-'),
+        p.gender === 'M' ? 'Masc' : 'Fem',
+        p.diagnosis || '-',
+        statusLabels[p.status] || p.status || '-',
+        p.healthPlan || 'Particular',
+        p.admissionDate || '-'
+      ]);
+
+      PdfExport.generate({
+        title: 'Relatório de Pacientes',
+        subtitle: `${patients.length} pacientes cadastrados — Gerado em ${new Date().toLocaleString('pt-BR')}`,
+        filename: `relatorio_pacientes_${today}`,
+        sections: [{
+          type: 'table',
+          title: 'Lista de Pacientes',
+          headers: ['Nome', 'Idade', 'Sexo', 'Diagnóstico', 'Status', 'Convênio', 'Admissão'],
+          rows: rows
+        }]
+      });
+    }
+
+    const typeLabels = { 'attendance': 'atendimentos', 'financial': 'financeiro', 'patients': 'pacientes' };
+    Store.addAuditLog('Relatório exportado', { details: `PDF — ${typeLabels[type] || type}` });
+    Notifications.show('Exportação', `Relatório PDF de ${typeLabels[type] || type} baixado com sucesso`, 'success');
   }
 
   function showAddProfessional() {

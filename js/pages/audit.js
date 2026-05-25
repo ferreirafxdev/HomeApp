@@ -22,7 +22,7 @@ const AuditPage = (() => {
           </div>
           <div class="page-actions">
             <button class="btn btn-secondary btn-sm" onclick="AuditPage.exportLog()">
-              <i data-lucide="download"></i> Exportar
+              <i data-lucide="download"></i> Exportar PDF
             </button>
           </div>
         </div>
@@ -234,21 +234,37 @@ const AuditPage = (() => {
 
   function exportLog() {
     const entries = getFilteredEntries();
-    const csv = 'Data,Ação,Profissional,Função,Paciente,Detalhes,Localização\n' +
-      entries.map(e =>
-        `"${new Date(e.timestamp).toLocaleString('pt-BR')}","${e.action}","${e.professional}","${e.professionalRole || ''}","${e.patient || ''}","${(e.details || '').replace(/"/g, '""')}","${e.location || ''}"`
-      ).join('\n');
+    if (!entries.length) {
+      Notifications.show('Exportação', 'Nenhum registro para exportar', 'warning');
+      return;
+    }
 
-    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `auditoria_homecare_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const headers = ['Data/Hora', 'Ação', 'Profissional', 'Função', 'Paciente', 'Detalhes'];
+    const rows = entries.map(e => [
+      new Date(e.timestamp).toLocaleString('pt-BR'),
+      e.action || '',
+      e.professional || '',
+      e.professionalRole || '',
+      e.patient || '-',
+      (e.details || '').substring(0, 60)
+    ]);
 
-    Store.addAuditLog('Relatório exportado', { details: `Auditoria — ${entries.length} registros` });
-    Notifications.show('Exportação', 'Relatório CSV baixado com sucesso', 'success');
+    const filename = PdfExport.generate({
+      title: 'Relatório de Auditoria',
+      subtitle: `${entries.length} registros — Gerado em ${new Date().toLocaleString('pt-BR')}`,
+      filename: `auditoria_homecare_${new Date().toISOString().split('T')[0]}`,
+      sections: [
+        {
+          type: 'table',
+          title: 'Registros de Auditoria',
+          headers: headers,
+          rows: rows
+        }
+      ]
+    });
+
+    Store.addAuditLog('Relatório exportado', { details: `Auditoria PDF — ${entries.length} registros` });
+    Notifications.show('Exportação', 'Relatório PDF baixado com sucesso', 'success');
   }
 
   function getTodayCount(auditLog) {

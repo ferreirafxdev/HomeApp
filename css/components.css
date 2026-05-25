@@ -890,7 +890,7 @@ select.form-input {
   padding-left: 28px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: 20px;
 }
 
 .timeline::before {
@@ -905,10 +905,10 @@ select.form-input {
 
 .timeline-item {
   position: relative;
-  padding: var(--space-lg);
+  padding: 24px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-left: 4px solid var(--primary);
+  border-left: 5px solid var(--primary);
   border-radius: var(--border-radius);
   box-shadow: var(--shadow-sm);
   transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
@@ -920,13 +920,13 @@ select.form-input {
 }
 
 .timeline-item:last-child {
-  padding-bottom: var(--space-lg);
+  padding-bottom: 24px;
 }
 
 .timeline-dot {
   position: absolute;
   left: -32px;
-  top: 20px;
+  top: 28px;
   width: 14px;
   height: 14px;
   border-radius: 50%;
@@ -940,25 +940,26 @@ select.form-input {
 .timeline-dot.danger { border-color: var(--danger); }
 
 .timeline-time {
-  font-size: var(--font-size-base);
+  font-size: 16px;
   color: var(--text-tertiary);
-  margin-bottom: var(--space-sm);
+  margin-bottom: 10px;
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 6px;
+  font-weight: 500;
 }
 
 .timeline-title {
-  font-size: var(--font-size-md);
-  font-weight: 600;
-  margin-bottom: var(--space-sm);
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
   color: var(--text-primary);
 }
 
 .timeline-desc {
-  font-size: var(--font-size-base);
+  font-size: 17px;
   color: var(--text-secondary);
-  line-height: 1.7;
+  line-height: 1.8;
   white-space: pre-line;
   word-break: break-word;
 }

@@ -85,12 +85,12 @@ const PatientNutrition = (() => {
       title: 'Editar Anamnese',
       content: `
         <form onsubmit="PatientNutrition.saveAnamnesis(event, '${patientId}')">
-          <div class="form-group"><label>Objetivo</label><input class="form-control" name="objective" value="${data.objective || ''}"></div>
-          <div class="form-group"><label>Alergias</label><input class="form-control" name="allergies" value="${data.allergies || ''}"></div>
-          <div class="form-group"><label>Intolerâncias</label><input class="form-control" name="intolerances" value="${data.intolerances || ''}"></div>
-          <div class="form-group"><label>Doenças Base</label><input class="form-control" name="diseases" value="${data.diseases || ''}"></div>
-          <div class="form-group"><label>Ingestão Hídrica (ml)</label><input class="form-control" type="number" name="water" value="${data.water || ''}"></div>
-          <div class="form-group"><label>Histórico Clínico</label><textarea class="form-control" name="history">${data.history || ''}</textarea></div>
+          <div class="form-group"><label>Objetivo</label><input class="form-input" name="objective" value="${data.objective || ''}"></div>
+          <div class="form-group"><label>Alergias</label><input class="form-input" name="allergies" value="${data.allergies || ''}"></div>
+          <div class="form-group"><label>Intolerâncias</label><input class="form-input" name="intolerances" value="${data.intolerances || ''}"></div>
+          <div class="form-group"><label>Doenças Base</label><input class="form-input" name="diseases" value="${data.diseases || ''}"></div>
+          <div class="form-group"><label>Ingestão Hídrica (ml)</label><input class="form-input" type="number" name="water" value="${data.water || ''}"></div>
+          <div class="form-group"><label>Histórico Clínico</label><textarea class="form-input" name="history">${data.history || ''}</textarea></div>
           <button type="submit" class="btn btn-primary btn-full mt-sm">Salvar</button>
         </form>
       `
@@ -157,13 +157,13 @@ const PatientNutrition = (() => {
       content: `
         <form onsubmit="PatientNutrition.saveAssessment(event, '${patientId}')">
           <div class="grid-2">
-            <div class="form-group"><label>Peso (kg)</label><input class="form-control" type="number" step="0.1" name="weight" required></div>
-            <div class="form-group"><label>Altura (cm)</label><input class="form-control" type="number" name="height" required></div>
-            <div class="form-group"><label>Cintura (cm)</label><input class="form-control" type="number" step="0.1" name="waist"></div>
-            <div class="form-group"><label>Pescoço (cm)</label><input class="form-control" type="number" step="0.1" name="neck"></div>
-            <div class="form-group"><label>Quadril (cm) - Mulheres</label><input class="form-control" type="number" step="0.1" name="hip"></div>
+            <div class="form-group"><label>Peso (kg)</label><input class="form-input" type="number" step="0.1" name="weight" required></div>
+            <div class="form-group"><label>Altura (cm)</label><input class="form-input" type="number" name="height" required></div>
+            <div class="form-group"><label>Cintura (cm)</label><input class="form-input" type="number" step="0.1" name="waist"></div>
+            <div class="form-group"><label>Pescoço (cm)</label><input class="form-input" type="number" step="0.1" name="neck"></div>
+            <div class="form-group"><label>Quadril (cm) - Mulheres</label><input class="form-input" type="number" step="0.1" name="hip"></div>
             <div class="form-group"><label>Fator de Atividade</label>
-              <select name="activityLevel" class="form-control">
+              <select name="activityLevel" class="form-input">
                 <option value="1.2">Sedentário (1.2)</option>
                 <option value="1.375">Leve (1.375)</option>
                 <option value="1.55">Moderado (1.55)</option>
@@ -239,10 +239,10 @@ const PatientNutrition = (() => {
       title: 'Novo Plano (Simplificado)',
       content: `
         <form onsubmit="PatientNutrition.savePlan(event, '${patientId}')">
-          <div class="form-group"><label>Título</label><input class="form-control" name="title" required placeholder="Dieta Hipertrofia"></div>
-          <div class="form-group"><label>Calorias (Total)</label><input class="form-control" type="number" name="calories" required></div>
+          <div class="form-group"><label>Título</label><input class="form-input" name="title" required placeholder="Dieta Hipertrofia"></div>
+          <div class="form-group"><label>Calorias (Total)</label><input class="form-input" type="number" name="calories" required></div>
           <div class="form-group"><label>Refeições (separadas por nova linha ex: 08:00 - Ovos)</label>
-            <textarea class="form-control" name="meals" rows="5"></textarea>
+            <textarea class="form-input" name="meals" rows="5"></textarea>
           </div>
           <button type="submit" class="btn btn-primary btn-full mt-sm">Salvar Plano</button>
         </form>

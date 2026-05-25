@@ -476,14 +476,21 @@ const PatientDetailPage = (() => {
           ${evolutions.map(e => {
             const prof = Store.getById('professionals', e.professionalId);
             const typeColors = { medical: 'success', nursing: '', physio: 'warning', psychology: '' };
+            const typeLabels = { medical: 'Médica', nursing: 'Enfermagem', physio: 'Fisioterapia', psychology: 'Psicologia', nutrition: 'Nutrição' };
             return `
               <div class="timeline-item">
                 <div class="timeline-dot ${typeColors[e.type] || ''}"></div>
-                <div class="timeline-time">${formatDateTime(e.timestamp)}</div>
-                <div class="timeline-title">${prof?.name || 'Profissional'} <span class="badge badge-neutral" style="font-size:10px">${prof?.role || ''}</span></div>
+                <div class="timeline-time">
+                  <i data-lucide="clock" style="width:14px;height:14px;flex-shrink:0"></i>
+                  ${formatDateTime(e.timestamp)}
+                </div>
+                <div class="timeline-title">
+                  ${prof?.name || 'Profissional'}
+                  <span class="badge badge-neutral" style="font-size:var(--font-size-sm);margin-left:var(--space-sm);vertical-align:middle">${typeLabels[e.type] || prof?.role || ''}</span>
+                </div>
                 <div class="timeline-desc">${e.text}</div>
               </div>`;
-          }).join('') || '<div class="empty-state"><i data-lucide="file-text"></i><p>Nenhuma evolução registrada</p></div>'}
+          }).join('') || '<div class="empty-state"><i data-lucide="file-text"></i><h3>Nenhuma evolução registrada</h3><p>Clique em "Nova Evolução" para adicionar o primeiro registro clínico.</p></div>'}
         </div>
       </div>
     `;

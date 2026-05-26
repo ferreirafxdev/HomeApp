@@ -6,7 +6,7 @@ const PatientDashboardPage = (() => {
 
   function render() {
     const user = Store.get('currentUser');
-    const patientData = Store.getById('patients', user.id);
+    const patientData = Store.getById('patients', user.id) || user;
     const plans = Store.getAll('nutritionalPlans').filter(p => p.patientId === user.id);
     const currentPlan = plans.length ? plans[plans.length - 1] : null;
 
@@ -28,6 +28,11 @@ const PatientDashboardPage = (() => {
             <div class="kpi-value">Chat</div>
             <div class="kpi-label">Falar com Nutri</div>
           </div>
+          <div class="kpi-card kpi-green animate-fade-in-up delay-3" style="cursor:pointer" onclick="PatientNutrition.newPhotoModal('${user.id}')">
+            <div class="kpi-icon"><i data-lucide="camera"></i></div>
+            <div class="kpi-value">Fotos</div>
+            <div class="kpi-label">Evolução Visual</div>
+          </div>
         </div>
 
         <div class="card mt-lg animate-fade-in-up delay-3">
@@ -35,6 +40,15 @@ const PatientDashboardPage = (() => {
             <h3 class="card-title">Minha Dieta Atual</h3>
           </div>
           ${renderCurrentPlan(currentPlan)}
+        </div>
+
+        <div class="card mt-lg animate-fade-in-up delay-4">
+          <div class="card-header">
+            <h3 class="card-title">Minha Evolução Visual</h3>
+          </div>
+          <div style="padding:var(--space-md)">
+            ${typeof PatientNutrition !== 'undefined' ? PatientNutrition.renderPhotos(patientData) : '<p>Módulo indisponível</p>'}
+          </div>
         </div>
       </div>
     `;

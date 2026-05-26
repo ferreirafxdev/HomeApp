@@ -17,6 +17,7 @@ const PatientNutrition = (() => {
           <button class="tab ${subTab === 'anamnese' ? 'active' : ''}" onclick="PatientNutrition.switchSubTab('${patient.id}', 'anamnese')">Anamnese</button>
           <button class="tab ${subTab === 'assessment' ? 'active' : ''}" onclick="PatientNutrition.switchSubTab('${patient.id}', 'assessment')">Avaliação</button>
           <button class="tab ${subTab === 'plan' ? 'active' : ''}" onclick="PatientNutrition.switchSubTab('${patient.id}', 'plan')">Plano Alimentar</button>
+          <button class="tab ${subTab === 'photos' ? 'active' : ''}" onclick="PatientNutrition.switchSubTab('${patient.id}', 'photos')">Fotos</button>
         </div>
 
         <div id="nutritionContent" style="margin-top:var(--space-md)">
@@ -36,7 +37,7 @@ const PatientNutrition = (() => {
       // Update active class on buttons
       document.querySelectorAll('#tabContent .tabs .tab').forEach(t => {
         t.classList.remove('active');
-        if (t.innerText.toLowerCase().includes(tab === 'plan' ? 'plano' : tab === 'assessment' ? 'aval' : 'anamnese')) {
+        if (t.innerText.toLowerCase().includes(tab === 'plan' ? 'plano' : tab === 'assessment' ? 'aval' : tab === 'photos' ? 'foto' : 'anamnese')) {
           t.classList.add('active');
         }
       });
@@ -48,6 +49,7 @@ const PatientNutrition = (() => {
     if (subTab === 'anamnese') return renderAnamnesis(patient);
     if (subTab === 'assessment') return renderAssessment(patient);
     if (subTab === 'plan') return renderMealPlan(patient);
+    if (subTab === 'photos') return renderPhotos(patient);
     return '';
   }
 
@@ -222,7 +224,7 @@ const PatientNutrition = (() => {
           <div class="card-flat" style="margin-bottom:var(--space-sm)">
             <div style="display:flex;justify-content:space-between">
               <strong>${p.title} (${p.calories} kcal)</strong>
-              <button class="btn btn-ghost btn-sm" onclick="PDFExport.exportMealPlanPDF('${patient.id}', '${p.id}')">
+              <button class="btn btn-ghost btn-sm" onclick="PdfExport.exportMealPlanPDF('${patient.id}', '${p.id}')">
                 <i data-lucide="download"></i> PDF
               </button>
             </div>
@@ -271,12 +273,267 @@ const PatientNutrition = (() => {
     switchSubTab(patientId, 'plan');
   }
 
+  // ---- FOTOS EVOLUTIVAS ----
+  function renderPhotos(patient) {
+    const photos = Store.getAll('patientPhotos').filter(p => p.patientId === patient.id).sort((a,b) => new Date(b.date) - new Date(a.date));
+    
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-md)">
+        <div>
+          <h4 style="margin:0">Evolução Visual</h4>
+          <p style="font-size:var(--font-size-sm);color:var(--text-secondary);margin:0">Acompanhamento através de fotos</p>
+        </div>
+        <div style="display:flex;gap:var(--space-sm)">
+          <button class="btn btn-outline btn-sm" onclick="PatientNutrition.comparePhotosModal('${patient.id}')" ${photos.length < 2 ? 'disabled' : ''}>
+            <i data-lucide="sliders"></i> Comparar
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="PatientNutrition.newPhotoModal('${patient.id}')">
+            <i data-lucide="camera"></i> Adicionar
+          </button>
+        </div>
+      </div>
+      
+      ${photos.length === 0 ? '<div class="empty-state"><p>Nenhuma foto registrada ainda.</p></div>' : `
+        <div class="photo-gallery-grid">
+          ${photos.map(p => `
+            <div class="photo-card animate-fade-in-up">
+              <div class="photo-card-header">
+                <span class="photo-card-date">${new Date(p.date + 'T00:00:00').toLocaleDateString()}</span>
+              </div>
+              <div class="photo-card-body">
+                ${p.frontImg ? `<div class="photo-img-wrapper" onclick="Modal.show({title:'Frente', content:'<img src=\\'${p.frontImg}\\' style=\\'width:100%\\'>'})"><img src="${p.frontImg}"><div class="photo-img-label">Frente</div></div>` : ''}
+                ${p.sideImg ? `<div class="photo-img-wrapper" onclick="Modal.show({title:'Perfil', content:'<img src=\\'${p.sideImg}\\' style=\\'width:100%\\'>'})"><img src="${p.sideImg}"><div class="photo-img-label">Perfil</div></div>` : ''}
+                ${p.backImg ? `<div class="photo-img-wrapper" onclick="Modal.show({title:'Costas', content:'<img src=\\'${p.backImg}\\' style=\\'width:100%\\'>'})"><img src="${p.backImg}"><div class="photo-img-label">Costas</div></div>` : ''}
+              </div>
+              <div class="photo-card-footer">
+                <div class="photo-stat">
+                  <span class="photo-stat-val">${p.weight || '-'}kg</span>
+                  <span class="photo-stat-lbl">Peso</span>
+                </div>
+                <div class="photo-stat">
+                  <span class="photo-stat-val">${p.bmi || '-'}</span>
+                  <span class="photo-stat-lbl">IMC</span>
+                </div>
+                <div class="photo-stat">
+                  <span class="photo-stat-val">${p.bodyFat ? p.bodyFat + '%' : '-'}</span>
+                  <span class="photo-stat-lbl">% Gord</span>
+                </div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `}
+    `;
+  }
+
+  function newPhotoModal(patientId) {
+    const ass = Store.getAll('nutritionalAssessments').filter(a => a.patientId === patientId);
+    const latest = ass.length ? ass[ass.length - 1] : {};
+
+    Modal.show({
+      title: 'Adicionar Fotos Evolutivas',
+      content: `
+        <form onsubmit="PatientNutrition.savePhotos(event, '${patientId}')">
+          <div class="grid-3" style="margin-bottom:var(--space-md)">
+            <div class="form-group">
+              <label>Frente</label>
+              <input type="file" accept="image/*" id="upload-front" class="form-input" style="font-size:12px">
+            </div>
+            <div class="form-group">
+              <label>Perfil</label>
+              <input type="file" accept="image/*" id="upload-side" class="form-input" style="font-size:12px">
+            </div>
+            <div class="form-group">
+              <label>Costas</label>
+              <input type="file" accept="image/*" id="upload-back" class="form-input" style="font-size:12px">
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="form-group"><label>Data</label><input type="date" name="date" class="form-input" required value="${new Date().toISOString().split('T')[0]}"></div>
+            <div class="form-group"><label>Peso Atual (kg)</label><input type="number" step="0.1" name="weight" class="form-input" value="${latest.weight || ''}"></div>
+          </div>
+          <div class="form-group">
+            <label>Observações</label>
+            <textarea name="notes" class="form-input" rows="2"></textarea>
+          </div>
+          <div class="form-group" style="display:flex;align-items:center;gap:var(--space-sm);background:var(--bg-secondary);padding:var(--space-sm);border-radius:var(--border-radius);border:1px solid var(--border-color)">
+            <input type="checkbox" id="lgpd-consent" required style="width:18px;height:18px">
+            <label for="lgpd-consent" style="margin:0;font-size:var(--font-size-xs);color:var(--text-secondary)">
+              Confirmo que tenho autorização para armazenar estas fotos (LGPD).
+            </label>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full mt-sm">Salvar Fotos</button>
+        </form>
+      `
+    });
+  }
+
+  function savePhotos(e, patientId) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.innerText = 'Processando...';
+
+    const data = new FormData(e.target);
+    const date = data.get('date');
+    const weight = data.get('weight');
+    const notes = data.get('notes');
+    
+    const ass = Store.getAll('nutritionalAssessments').filter(a => a.patientId === patientId);
+    const latest = ass.length ? ass[ass.length - 1] : null;
+    let bmi = '-';
+    if (latest && latest.height && weight) {
+      bmi = NutritionCalc.calculateBMI(parseFloat(weight), parseFloat(latest.height)).toFixed(1);
+    }
+    const bodyFat = latest ? (latest.bodyFat ? latest.bodyFat.toFixed(1) : '') : '';
+
+    const toBase64 = file => new Promise((resolve, reject) => {
+      if (!file || file.size === 0) return resolve(null);
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+    });
+
+    const frontFile = document.getElementById('upload-front').files[0];
+    const sideFile = document.getElementById('upload-side').files[0];
+    const backFile = document.getElementById('upload-back').files[0];
+
+    Promise.all([toBase64(frontFile), toBase64(sideFile), toBase64(backFile)]).then(([frontImg, sideImg, backImg]) => {
+      Store.add('patientPhotos', {
+        patientId,
+        date,
+        weight,
+        bmi,
+        bodyFat,
+        notes,
+        frontImg,
+        sideImg,
+        backImg,
+        consentLGPD: true,
+        consentDate: new Date().toISOString()
+      });
+      Modal.close();
+      if (typeof PatientDashboardPage !== 'undefined' && App.currentRoute === 'patient-dashboard') {
+         App.navigate('patient-dashboard'); // refresh if in patient dashboard
+      } else {
+         switchSubTab(patientId, 'photos');
+      }
+    }).catch(err => {
+      console.error(err);
+      btn.disabled = false;
+      btn.innerText = 'Erro ao salvar';
+    });
+  }
+
+  function comparePhotosModal(patientId) {
+    const photos = Store.getAll('patientPhotos').filter(p => p.patientId === patientId).sort((a,b) => new Date(a.date) - new Date(b.date));
+    if (photos.length < 2) return;
+
+    Modal.show({
+      title: 'Comparação Antes e Depois',
+      content: `
+        <div style="display:flex;gap:var(--space-sm);margin-bottom:var(--space-md)">
+          <div style="flex:1">
+            <label style="font-size:var(--font-size-xs)">Antes (Data)</label>
+            <select id="compare-before" class="form-input" onchange="PatientNutrition.updateComparison()">
+              ${photos.map((p,i) => `<option value="${p.id}" ${i===0?'selected':''}>${new Date(p.date+'T00:00:00').toLocaleDateString()}</option>`).join('')}
+            </select>
+          </div>
+          <div style="flex:1">
+            <label style="font-size:var(--font-size-xs)">Depois (Data)</label>
+            <select id="compare-after" class="form-input" onchange="PatientNutrition.updateComparison()">
+              ${photos.map((p,i) => `<option value="${p.id}" ${i===photos.length-1?'selected':''}>${new Date(p.date+'T00:00:00').toLocaleDateString()}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div id="comparison-render-area"></div>
+      `
+    });
+    setTimeout(() => updateComparison(), 50);
+  }
+
+  function updateComparison() {
+    const beforeId = document.getElementById('compare-before').value;
+    const afterId = document.getElementById('compare-after').value;
+    const beforeP = Store.getAll('patientPhotos').find(p => p.id === beforeId);
+    const afterP = Store.getAll('patientPhotos').find(p => p.id === afterId);
+    const area = document.getElementById('comparison-render-area');
+    
+    const imgBefore = beforeP.frontImg || beforeP.sideImg || beforeP.backImg;
+    const imgAfter = afterP.frontImg || afterP.sideImg || afterP.backImg;
+
+    if (!imgBefore || !imgAfter) {
+      area.innerHTML = '<p>Fotos insuficientes para comparação.</p>';
+      return;
+    }
+
+    area.innerHTML = `
+      <div class="comparison-container" id="comp-container">
+        <div class="comparison-img-wrapper">
+          <img src="${imgAfter}" class="comparison-img-after">
+          <div class="comparison-overlay" id="comp-overlay">
+            <img src="${imgBefore}">
+          </div>
+          <div class="comparison-slider-handle" id="comp-handle">
+            <div class="comparison-slider-button"><i data-lucide="chevrons-left-right"></i></div>
+          </div>
+          <div class="comparison-labels">
+            <div class="comparison-label">Antes</div>
+            <div class="comparison-label">Depois</div>
+          </div>
+        </div>
+      </div>
+      <div class="grid-2 mt-md" style="font-size:var(--font-size-sm);text-align:center">
+        <div style="background:var(--bg-secondary);padding:var(--space-sm);border-radius:var(--border-radius)">
+          <div style="color:var(--text-secondary)">Antes</div>
+          <div style="font-weight:700">${beforeP.weight||'-'}kg | IMC: ${beforeP.bmi||'-'}</div>
+        </div>
+        <div style="background:var(--bg-secondary);padding:var(--space-sm);border-radius:var(--border-radius)">
+          <div style="color:var(--text-secondary)">Depois</div>
+          <div style="font-weight:700">${afterP.weight||'-'}kg | IMC: ${afterP.bmi||'-'}</div>
+        </div>
+      </div>
+    `;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    initSlider();
+  }
+
+  function initSlider() {
+    const container = document.getElementById('comp-container');
+    const overlay = document.getElementById('comp-overlay');
+    const handle = document.getElementById('comp-handle');
+    if(!container) return;
+
+    let isDragging = false;
+    
+    const moveSlider = (e) => {
+      if(!isDragging) return;
+      const rect = container.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      let percent = (x / rect.width) * 100;
+      percent = Math.max(0, Math.min(100, percent));
+      overlay.style.width = percent + '%';
+      handle.style.left = percent + '%';
+    };
+
+    handle.addEventListener('mousedown', () => isDragging = true);
+    handle.addEventListener('touchstart', () => isDragging = true);
+    window.addEventListener('mouseup', () => isDragging = false);
+    window.addEventListener('touchend', () => isDragging = false);
+    window.addEventListener('mousemove', moveSlider);
+    window.addEventListener('touchmove', moveSlider);
+  }
+
   return { 
     render, 
     switchSubTab,
     editAnamnesis, saveAnamnesis,
     newAssessment, saveAssessment,
-    newPlan, savePlan
+    newPlan, savePlan,
+    newPhotoModal, savePhotos,
+    comparePhotosModal, updateComparison,
+    renderPhotos
   };
 })();
 
